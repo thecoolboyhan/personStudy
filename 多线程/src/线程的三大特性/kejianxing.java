@@ -20,4 +20,5 @@ class abb extends Thread{
     System.out.println("当前线程的名字："+name);
   }
 
+
 }
