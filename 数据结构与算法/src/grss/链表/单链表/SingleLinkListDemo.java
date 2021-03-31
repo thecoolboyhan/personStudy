@@ -1,5 +1,7 @@
 package grss.链表.单链表;
 
+import java.util.Stack;
+
 /**
  * 韩永发
  *
@@ -167,6 +169,29 @@ class sigleLinkedList{
       temp=next;//当前指针在原来基础上后移
     }
     theHead.next=newHead.next;
+  }
+  
+  //逆序打印一个单链表且不改变原来的顺序
+  public static void reversePrintList(HeroNode theHead) {
+	//判断传入的链表是否为空
+	  if(theHead.next==null) {
+		  return;
+	  }
+	  //创建一个栈
+	  Stack<HeroNode> stack = new Stack<HeroNode>();
+	  //定义一个指针
+	  HeroNode cear=theHead.next;
+	  //压入栈，两个方法
+	  while(cear!=null) {
+//		  stack.add(cear);
+		  stack.push(cear);
+		  cear=cear.next;
+	  }
+	  //出栈输出
+	  while(cear!=null) {
+		  HeroNode pop = stack.pop();
+		  System.out.println(pop);  
+	  }
   }
 
 }

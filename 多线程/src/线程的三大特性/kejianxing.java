@@ -8,7 +8,9 @@ package 线程的三大特性;
 public class kejianxing {
 
   public static void main(String[] args) {
-
+	 Thread thread = new Thread();
+	 thread.getState();
+	 thread.yield();
   }
 }
 
@@ -19,6 +21,5 @@ class abb extends Thread{
     String name = Thread.currentThread().getName();
     System.out.println("当前线程的名字："+name);
   }
-
 
 }
