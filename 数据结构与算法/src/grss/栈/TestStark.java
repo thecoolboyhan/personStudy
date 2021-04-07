@@ -10,5 +10,6 @@ import java.util.Stack;
 public class TestStark {
 
 	public static void main(String[] args) {
+		Object o = new Object();
 	}
 }
