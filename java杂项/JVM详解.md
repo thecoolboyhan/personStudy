@@ -114,8 +114,7 @@ pc寄存器用来储存指向下一条指令的地址，也就是即将要执行
 
 
 
-![image-20210408192337644](C:\Users\hp\AppData\Roaming\Typora\typora-user-images\image-20210408192337644.png)
-
+![](https://ae01.alicdn.com/kf/U1651b01ab9de4497847316b52a39c466c.jpg)
 
 
 # 栈

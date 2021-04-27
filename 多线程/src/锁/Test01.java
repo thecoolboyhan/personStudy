@@ -22,17 +22,18 @@ public class Test01 {
       }
     }).start();
   }
-  public void doLongTimeTask(){
-    System.out.println(Thread.currentThread().getName()+"task begin");
+
+  public void doLongTimeTask() {
+    System.out.println(Thread.currentThread().getName() + "task begin");
     try {
       Thread.sleep(3000);
-      synchronized (this){
-        System.out.println(Thread.currentThread().getName()+"开始同步");
+      synchronized (this) {
+        System.out.println(Thread.currentThread().getName() + "开始同步");
         for (int i = 0; i < 100; i++) {
-          System.out.println(Thread.currentThread().getName()+"-->"+i);
+          System.out.println(Thread.currentThread().getName() + "-->" + i);
         }
       }
-      System.out.println(Thread.currentThread().getName()+"task end!");
+      System.out.println(Thread.currentThread().getName() + "task end!");
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
