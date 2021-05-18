@@ -7,9 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
-
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(8888);
+        ServerSocket serverSocket = new ServerSocket(9999);
         Socket accept = serverSocket.accept();
         InputStream inputStream = accept.getInputStream();
         InputStreamReader reader = new InputStreamReader(inputStream);
@@ -31,24 +30,23 @@ public class Server {
         }
         byte[] bytes1 = byteArrayOutputStream.toByteArray();
         byteArrayOutputStream.close();
-        inputStream1.close();
+        fileInputStream.close();
 
         //发送给客户端
         OutputStream outputStream = accept.getOutputStream();
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
         bufferedOutputStream.write(bytes1);
+        accept.shutdownOutput();
         bufferedOutputStream.close();
-//        accept.shutdownOutput();
+
 
         //接收客户的返回
-        InputStream inputStream2 = accept.getInputStream();
-        byte[] bytes2 = new byte[1024];
-        int len1;
-        while ((len1=inputStream2.read(bytes2))!=-1){
-            System.out.println(new String(bytes2,0,len1));
-        }
-        accept.shutdownInput();
-        inputStream2.close();
+//        InputStream inputStream2 = accept.getInputStream();
+//        byte[] bytes2 = new byte[1024];
+//        int len1;
+//        while ((len1=inputStream2.read(bytes2))!=-1){
+//            System.out.println(new String(bytes2,0,len1));
+//        }
         accept.close();
         serverSocket.close();
 
