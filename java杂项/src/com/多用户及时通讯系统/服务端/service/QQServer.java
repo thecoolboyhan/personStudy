@@ -4,6 +4,7 @@ import com.多用户及时通讯系统.common.Message;
 import com.多用户及时通讯系统.common.MessageType;
 import com.多用户及时通讯系统.common.User;
 import com.多用户及时通讯系统.客户端.servive.ManageClientServerThread;
+import com.多用户及时通讯系统.客户端.servive.SendNewsToAllService;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -29,6 +30,7 @@ public class QQServer {
     public QQServer(){
         System.out.println("服务端在9999端口监听。。。");
         try {
+            new Thread(new SendNewsToAllService()).start();
             serverSocket=new ServerSocket(9999);
             while (true) {//
                 Socket socket = serverSocket.accept();

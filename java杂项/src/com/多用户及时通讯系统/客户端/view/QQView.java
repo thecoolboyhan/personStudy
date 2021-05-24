@@ -1,5 +1,7 @@
 package com.多用户及时通讯系统.客户端.view;
 
+import com.多用户及时通讯系统.客户端.servive.FileClientService;
+import com.多用户及时通讯系统.客户端.servive.MessageClientService;
 import com.多用户及时通讯系统.客户端.servive.UserClientService;
 import com.多用户及时通讯系统.客户端.util.Utility;
 
@@ -9,6 +11,8 @@ public class QQView {
     private boolean loop=true;//是否显示菜单
     private String key="";
     private UserClientService userClientService=new UserClientService();
+    private MessageClientService messageClientService=new MessageClientService();
+    private FileClientService fileClientService=new FileClientService();
 
 
     public static void main(String[] args) {
@@ -53,15 +57,33 @@ public class QQView {
                                     userClientService.getOnlineFriendList();
                                     break;
                                 case "2":
+                                    System.out.println("请输入想要对大家说的话：");
+                                    String content1 = Utility.readString(100);
+                                    messageClientService.sendMessageToAll(content1,userId);
                                     System.out.println("\t\t群发消息");
                                     break;
                                 case "3":
-                                    System.out.println("\t\t3私聊");
+                                    System.out.println("请输入想要聊天的（在线）编号：");
+                                    String getterId = Utility.readString(50);
+                                    System.out.println("请输入内容：");
+                                    String content = Utility.readString(100);
+                                    messageClientService.sendMessageToOne(content,userId,getterId);
+//                                    System.out.println("\t\t3私聊");
                                     break;
                                 case "4":
-                                    System.out.println("\t\t发送文件");
+                                    System.out.println("\t\t请输入你想要发送文件的用户：");
+                                    String getterId1 = Utility.readString(50);
+                                    System.out.println("\t\t请输入你想要发送文件的目录：");
+//                                    String src = Utility.readString(100);
+                                    String src="C:\\work\\11.jpg";
+                                    System.out.println("\t\t请输入你想要放到的目录：");
+//                                    String dest = Utility.readString(100);
+                                    String dest="C:\\work\\mvn\\12.jpg";
+                                    fileClientService.sendFileToOne(src,dest,userId,getterId1);
+//                                    System.out.println("\t\t发送文件");
                                     break;
                                 case "9":
+                                    userClientService.closeClient();
                                     loop=false;
                                     break;
 

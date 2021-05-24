@@ -65,6 +65,20 @@ public class UserClientService {
             e.printStackTrace();
         }
 
+    }
 
+    public void closeClient(){
+        Message message = new Message();
+        message.setSender(user.getUserId());
+        message.setMsgType(MessageType.MESSAGE_CLIENT_EXIT);
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(ManageClientServerThread.GetThreadByUserId(user.getUserId()).getSocket().getOutputStream());
+            oos.writeObject(message);
+            System.out.println(user.getUserId()+"退出了系统");
+            System.exit(0);//结束进程
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
