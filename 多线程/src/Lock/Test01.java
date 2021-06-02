@@ -21,12 +21,7 @@ public class Test01 {
         }
     }
     public static void main(String[] args) {
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                out();
-            }
-        };
+        Runnable runnable = () -> out();
         new Thread(runnable).start();
         new Thread(runnable).start();
         new Thread(runnable).start();

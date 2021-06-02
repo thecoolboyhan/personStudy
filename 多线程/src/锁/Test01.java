@@ -9,18 +9,8 @@ public class Test01 {
   public static void main(String[] args) {
     Test01 test01 = new Test01();
 //    Test01 test02 = new Test01();
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        test01.doLongTimeTask();
-      }
-    }).start();
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        test01.doLongTimeTask();
-      }
-    }).start();
+    new Thread(test01::doLongTimeTask).start();
+    new Thread(test01::doLongTimeTask).start();
   }
 
   public void doLongTimeTask() {
