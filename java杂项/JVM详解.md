@@ -194,3 +194,33 @@ java虚拟机的解释引擎是基于栈的执行引擎，其中栈指的就是�
 - 方法返回地址
 - 一些附加信息
 
+
+
+# 类加载过程
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1624503795185-1624503795168.png)
+
+
+
+## loading 加载
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1624513152313-1624513152293.png)
+
+- 父加载器
+
+> 父加载器不是“类加载器的加载器”，也不是类加载器的父类加载器。
+
+**父加载器只当前类加载器的parent对象指向的加载器。**
+
+
+
+## 校验
+
+
+
+## 赋值（默认值）
+
+
+
+## 赋初始值
+
