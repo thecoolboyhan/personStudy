@@ -214,13 +214,52 @@ java虚拟机的解释引擎是基于栈的执行引擎，其中栈指的就是�
 
 
 
-## 校验
+## ClassLoader的源码
+
+findInCache-> parentLoadClass -> findClass()
 
 
 
-## 赋值（默认值）
+## 自定义类加载器
 
+1. extends ClassLoader
+2. overwrite findClass（）-》defineClass（bytep[]->class clazz）
 
+混合执行，编译执行，解释执行
+
+## linking
+
+### 校验
+
+1. 验证文件是否符合jvm规定
+
+### 赋值（默认值）
+
+1. 静态成员变量赋默认值。
+
+### 解析
+
+1. 将类。方法，属性等符号引用解析为直接引用，指向内存的详细地址。
 
 ## 赋初始值
+
+
+
+### 总结
+
+> load- 默认值- 初始值
+>
+> new -申请内存- 默认值-初始值
+
+
+
+# JMM
+
+padding（缓存一次读取64个字节的数据）
+
+三级缓存
+
+- 合并写（寄存器只能处理四个字节）
+
+每四个字节同时修改。
 
