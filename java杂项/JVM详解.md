@@ -343,6 +343,128 @@ FGC不会清理
 
 
 
+- 垃圾回收器跟内存大小的关系
+  - serial	几十兆
+  - PS 上百兆-几个G（JDK默认的垃圾回收器）
+  - CMS 20G
+  - G1 上百G
+  - ZGC 4T - 16T（JDK13）
+
+- 常见的垃圾回收器的组合参数设定（1.8）
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625225994247-1625225994234.png)
+
+- 内存泄露
+
+> 有废对象占据内存空间，这块空间不被回收也无法使用，
+
+- 内存溢出
+
+> 不断地有数据占据内存，最后把内存空间占满。
+
+
+
+### G1和其他的垃圾回收器的区别
+
+- G1之前的垃圾回收器，有逻辑上的分带，还有物理上的分带。
+- G1只有逻辑上的分带，没有物理上的分带。
+- ZGC没有逻辑分带和物理分带，只有内存。
+
+
+
+## JVM调优
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625228423227-1625228423217.png)
+
+
+
+调优案例
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625449464803-1625449464792.png)
+
+- 系统cpu经常100%。如何调优？（面试高频）
+
+> cpu 100%那么一定是有线程在占用系统资源。
+
+1. 找出哪个进程cpu高（top）
+2. 该进程中的哪个线程cpu占用高（top -Hp）
+3. 导出该线程的堆栈（jstack）
+4. 查找哪个方法（栈帧）的消耗时间（jstack）
+5. 工作线程占比高|垃圾回收线程占比高
+
+
+
+## jvm调优经验
+
+jps 定位具体java进程
+
+jstack 定位线程状态，重点关注 WAITING BOCKED
+
+加入有一个进程中100个贤臣，很多线程都在waiting on<xxx>，一定要找到是哪个线程持有这把锁。
+
+jinfo +线程名：显示进程详细信息。
+
+jstat -gc 线程号： 显示gc信息。（不好看）
+
+
+
+- 利用JMX实现的图形化界面工具
+
+利用 JMX会消耗服务器性能，还挺大。
+
+jconsole ：jdk自带的可视化工具。
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625463036770-1625463036755.png)
+
+jvisualvm： 新的可视化工具（JDK自带）
+
+jprofiler最好用的图形化界面工具。（收费）
+
+
+
+- 如何定位OOM问题
+
+cmdline: arthas
+
+
+
+jmap -histo 1736 | head -20
+
+> 显示前20行的占用cpu的对象。
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625464536097-1625464536091.png)
+
+> 线上系统，内存特别大，jmap转dump执行期间会对进程产生很大的影响，甚至卡顿，（电商系统不适合）
+
+1. 设定参数HeapDump，OOM时会自动产生堆转储文件
+2. <font color="red">很多服务器备份（高可用），停一台服务器对其他的不影响。</font>
+
+
+
+在线分析
+
+- arthas：阿里的在线jvm分析工具。
+
+heapdump导出堆内存的情况。（也会影响性嫩）
+
+
+
+分析dump
+
+- jhat（jdk自带的dump分析工具）
+
+默认是多大dump文件用多大的内存去分析，分析时最好指定最大内存。
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625469300750-1625469300744.png)
+
+> 分析完成后它会返回一个port端口，我们可以通过远程连接这个端口来分析dump中的数据。
+
+
+
+## G1（JDK9的默认回收器）
+
+
+
 ### **CMS**（老年带回收器）
 
 - concurrent mark sweep
@@ -359,28 +481,54 @@ FGC不会清理
 
 当老年带满时（内存条碎片过多），会调用老年带单线程回收器来清理。（FGC）
 
-- 垃圾回收器跟内存大小的关系
-  - serial	几十兆
-  - PS 上百兆-几个G
-  - CMS 20G
-  - G1 上百G
-  - ZGC 4T
+- CMS
 
-- 常见的垃圾回收器的组合参数设定（1.8）
+1. 初始标记：通过GCroot找到根对象。（STW的）
 
-![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625225994247-1625225994234.png)
+   ![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625536953783-1625536953770.png)
 
-- 内存泄露
+2. 并发标记：不影响主线程的运行，在程序的运行当中来标记要回收的垃圾。
 
-> 有废对象占据内存空间，这块空间不被回收也无法使用，
+3. 重新标记：假如之前并发标记的垃圾被又被root重新连接了，（又不能回收）在STW的情况下重新标记一遍。
 
-- 内存溢出
+4. 并发清理：不影响程序运行的情况下清理。
 
-> 不断地有数据占据内存，最后把内存空间占满。
+### G1（垃圾优先）
+
+> G1是一种服务段应用使用的垃圾回收器，目标是用在多核、大内存的机器上，它在大多数情况下可以实现指定的GC暂停时间，同时还能保持较高的吞吐量。
 
 
 
-## JVM调优
+特点
 
-![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625228423227-1625228423217.png)
+- 并发收集
+- 压缩空闲空间不会延长GC的暂停时间
+- 更易预测的GC暂停时间
+- 适用不需要实现很高的吞吐量的场景
+
+> 把内存分成多个不同的分区，每个分区都可能是年轻代也可能是老年代。同一时间一个分区只能属于一个代。
+
+
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625553178210-1625553178204.png)
+
+
+
+## 三色标记算法
+
+- 白色：未被标记的对象
+- 灰色：自身被标记，成员变量未被标记
+- 黑色：自身和成员变量均已标记完成，
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625554564046-1625554563987.png)
+
+CMS解决三色标记问题
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625556799695-1625556799674.png)
+
+CMS使用增量更新
+
+G1使用SATB
+
+
 
