@@ -255,6 +255,10 @@ findInCache-> parentLoadClass -> findClass()
 
 # JMM
 
+- jvm分区
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1627032589921-1627032589890.png)
+
 padding（缓存一次读取64个字节的数据）
 
 三级缓存
@@ -270,6 +274,18 @@ padding（缓存一次读取64个字节的数据）
 jvm直接去访问os管理的内存。不需要不复制到jvm内存中，
 
 
+
+## 程序计数器
+
+> 记录下一条指令的执行地址
+
+程序计数器不会存在内存溢出问题。
+
+
+
+## 栈
+
+线程运行需要的内存空间
 
 ## 方法区
 
@@ -529,6 +545,4 @@ CMS解决三色标记问题
 CMS使用增量更新
 
 G1使用SATB
-
-
 
