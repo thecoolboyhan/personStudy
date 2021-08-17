@@ -67,7 +67,7 @@ public class CGLibFactory implements MethodInterceptor {
 
     public CGLibFactory(Object object) {
         super();
-        this.object = object;
+        this.obj`ect = object;
     }
 
     public Object createProxy(){

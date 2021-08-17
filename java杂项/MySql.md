@@ -284,9 +284,19 @@ InnoDB如果不创建主键，系统会自动帮我们维护一个隐藏的rowid
 5. Using jion buffer 使用了连接缓存
 6. impossible where  where子句的值为false，不能用来获取任何元素
 
+# 索引优化
 
+- 索引两表优化
 
-## 索引两表优化
+由于左连接的特性，不论如何左表都会全表扫描，left join应该在右表加索引。（右连接反之）
 
-  
+- 三表
 
+索引最好设置在经常查询的字段中。
+
+## 索引失效的情况
+
+![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1629166454176-1629166454161.png)
+
+1. 如果有联合索引，查询条件中不能跳过索引前面的列，否则索引会失效。
+2. 
