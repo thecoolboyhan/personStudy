@@ -349,6 +349,8 @@ FGC不会清理
 
 ### stringTable（字符串池）
 
+> StringTable的底层实现类似hashtable，是hash表。
+
 常量池中的信息都会被加载到运行时常量池中，这时这些都是常量池中的符号，还没有变为java字符串对象。
 
 所有字符串都是懒惰加载的，只有在使用时才会创建，字符串创建前先要去字符串池中判断当前字符串是否存在，如果不存在就创建。
@@ -361,13 +363,175 @@ FGC不会清理
 
 
 
+#### StringTable的垃圾回收
+
+当内存紧张时，且放入stringTable的字符串没有引用时，也会发生GC现象。
+
+
+
+#### stringTable的性能调优
+
+--XX StringTableSize=20000 修改stringTable单个桶大小，当stringtable中的字符串常量非常多时，可以调整桶大小减少hash冲突，来提升性能。
+
+让字符串入池可以极大的减少堆内存的占用。
+
+
+
+## 直接内存
+
+直接内存属于操作系统内存。
+
+- 常见于NIO操作时，用于数据缓冲区
+- 分配回收成本较高，但读写性能高
+- 不受JVM内存回收管理
+
+
+
+### direct Memory 大文件拷贝
+
+byteBuffer可以使用直接内存来完成文件NIO操作，它的大文件拷贝效率要比传统的FileInputStream（IO流）高效很多。
+
+- 传统IO拷贝操作
+
+![](https://i.loli.net/2021/11/05/XMEYhASzBukWe3v.png)
+
+文件要先被读取到系统内存中，后被拷贝到JVM堆内存中。
+
+cpu从java用户态先切换到内核态，再切换回用户态来完成拷贝。
+
+- 使用直接内存来完成大文件拷贝
+
+![](https://i.loli.net/2021/11/05/rHAD3pktg7YcFWV.png)
+
+会在系统内存中生成一块名为direct memory的内存空间，这块空间java可以直接访问。
+
+cpu从用户态切换到内核态，将文件读取到此内存中，然后切换回用户态直接在这块内存进行操作。
+
+> 比传统方式少了一次缓冲区复制操作。
+
+### 直接内存释放原理
+
+- 通过unsafe分配直接内存和释放内存
+
+```java
+long base = unsafe.allocateMemory(_1Gb);
+//分配内存
+unsafe.setMemory(base,_1Gb,(byte) 0);
+System.in.read();
+//释放内存
+unsafe.freeMemory(base);
+System.in.read()
+```
+
+![](https://i.loli.net/2021/11/05/2OX187sLqhSzIBA.png)
+
+
+
 # gc
 
 ![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625217137382-1625217137375.png)
 
 
 
+
+
 这些不会被垃圾回收
+
+
+
+### 四种引用
+
+![](https://i.loli.net/2021/11/05/HIXqKvshlSgfEjM.png)
+
+>  软引用和虚引用在被 gc时，要进入引用队列然后被gc回收所占用的空间。
+
+- 强
+
+只有所有GC Roots对象不通过（强引用）引用该对象，该对象才能被 垃圾回收。
+
+只要能通过gc root找到，就不会被垃圾回收。
+
+- 软
+
+只要没有被强引用引用到，在gc时就可能会被回收
+
+普通gc后，如果内存当内存不足时gc
+
+- 弱
+
+只要没有被强引用引用到，在gc时就可能会被回收
+
+只要发生gc就会被回收。
+
+
+
+- 虚
+
+必须配合引用对象使用，主要配合ByteBuffer使用，被引用对象回收时，会将虚引用入队，由Reference Handler线程调用虚引用相关方法释放直接内存。
+
+虚引用被回收时，就会被加入到引用队列中，当此引用不再被强引用引用时，会调用unsafe中的freeMemory方法回收。
+
+
+
+- 终结器引用
+
+终结方法被重写后，重写的终结方法就可以被gc回收。
+
+无需手动编码，但其内部配合引用队列使用，在垃圾回收时，终结器引用入队（被引用对象暂时没有被回收），再由Finalizer线程通过终结器引用找到被引用对象并调用它的finalize方法，第二次GC时才能回收被引用对象。
+
+
+
+## 一些常用参数
+
+- 堆初始大小
+
+-Xms
+
+- 堆最大大小
+
+-Xmx或-XX:MaxHeapSize=size
+
+- 新生代大小
+
+-Xnm或（-XX:NewSize=size + -XX:MaxNewSize=size）
+
+- 幸存区比例（动态）
+
+-XX:InitialSurvivorRatio=ratio和-XX:-UseAdptiveSizePolicy
+
+- 幸存区比例
+
+-XX:SurvivorRatio=ratio
+
+- 晋升阀值
+
+-XX:MaxTenuringThreshold=threshold
+
+- 晋升详情
+
+-XX:+PrintTemuringDistributtion
+
+- GC详情
+
+-XX:+PrintGCDetails -verbose:gc
+
+- FullGC 前MinorGC
+
+-XX:+ScavengeBeforeFullGC
+
+### UseGCOverheadLimit
+
+当打开此开关后，如果gc花费98%的时间，也只能回收不到2%的堆空间时，就不再发生gc而是报出此错。
+
+
+
+### -xx: +DisableExplicitGC
+
+禁用显示的垃圾回收，让代码中的System.gc()无效。
+
+system.gc() 是一种Full GC
+
+
 
 ## gc的常用算法
 
@@ -547,7 +711,7 @@ heapdump导出堆内存的情况。（也会影响性嫩）
 
 垃圾回收的线程和工作线程同时运行。
 
- 
+ ![](https://i.loli.net/2021/11/08/PIS7chgOrfAF5N9.png)
 
 ![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1625216803062-1625216803045.png)
 
