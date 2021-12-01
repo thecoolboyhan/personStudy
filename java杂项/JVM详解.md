@@ -92,6 +92,10 @@
 
 
 
+
+
+
+
 # 运行时数据区
 
 ## 程序计数器（pc寄存器）
@@ -200,6 +204,47 @@ java虚拟机的解释引擎是基于栈的执行引擎，其中栈指的就是�
 
 
 
+## 关于操作数栈和局部变量表的举例和说明
+
+```java
+public static void main(String[] args) {
+    int i = 0;
+    int x = 0;
+    while (i<10){
+        x=x++;
+        i++;
+    }
+    //结果是0
+    System.out.println(x);
+}
+```
+
+- 局部变量表
+
+一个类中的变量其实都是局部变量表中的一个值。
+
+- 操作数栈
+
+用来临时存储操作过程的中间结果，就是一个值变化过程的临时存储。
+
+### 操作数栈和局部变量表的联动
+
+以x=x++为例：
+
+- 读取 
+
+首先从局部变量表中读取load对映hash槽里读取x的值，此时操作数栈中为0，局部变量表也为0
+
+- x++
+
+x++操作是在局部变量表中进行的，所以局部变量表中的值加1，此时操作数栈中为0，局部变量表为0
+
+- 赋值
+
+等于操作是把操作数栈中的值赋值到对应的局部变量表中，操作数栈的值为0，局部变量表中的为1，用操作数栈的0来覆盖局部变量表中的1，所以x重新变为0。
+
+
+
 # 类加载过程
 
 ![](https://cdn.jsdelivr.net/gh/weidadeyongshi2/th_blogs@main/image/1624503795185-1624503795168.png)
@@ -257,7 +302,72 @@ findInCache-> parentLoadClass -> findClass()
 
 
 
+## 一些常用的分析
+
+### 静态绑定和动态绑定
+
+```java
+public Demo3_9(){}
+
+private void test1(){}
+
+private final void test2(){}
+
+public void test3(){}
+
+public static void test4(){}
+
+public static void main(String[] args) {
+    Demo3_9 demo3_9 = new Demo3_9();
+    demo3_9.test1();
+    demo3_9.test2();
+    demo3_9.test3();
+    Demo3_9.test4();
+}
+```
+
+test1,test2,test4都是可以直接确定要调用哪个方法，称为静态绑定。invokespecial（私有方法）  invokestatic（静态方法）
+
+test3是public的方法，可能会被重写，只有在运行的过程当中才能确定具体调用的哪个方法，被称为动态绑定。invokevirtual
+
+> 静态绑定的运行效率要远远高于动态绑定的方法。
+
+
+
+### 多态的原理
+
+> 虚方法表是在链接阶段生成的
+
+- 虚方法表(vtable)
+
+动态绑定的方法会存在虚方法表中。静态方法，私有方法，final修饰的方法都不在虚方法表中。虚方法表在一个类的二进制文件的最后一行。
+
+
+
+> 虚方法中会记录此类中的方法具体是调用的哪个父类或自己的具体方法。
+
+
+
+### finally
+
+finally会捕获try中的异常，catch中的异常，会普通代码里的异常 ，拷贝三份一样的代码，来确保finally中的代码一定会被执行。
+
+
+
+如果finally中有return，finally中的return会在代码中的return之后执行。finally中的return不会抛异常。
+
+
+
+### 对于反射的优化
+
+- sun.reflect.noInfloation可以用来禁用膨胀（直接生成GeneratedMethodAccessorl，但首次生成比较耗时，如果仅反射调用一次，不划算）
+- sun.reflect.inflationThreshold可以修改膨胀阀值
+
+
+
 # JMM
+
+ 
 
 - jvm分区
 
@@ -275,7 +385,7 @@ padding（缓存一次读取64个字节的数据）
 
 零拷贝
 
-jvm直接去访问os管理的内存。不需要不复制到jvm内存中，
+jvm直接去访问os管理的内存。不需要不复制到jvm内存中，就是直接内存的使用。
 
 
 
@@ -425,7 +535,7 @@ System.in.read()
 
 ![](https://i.loli.net/2021/11/05/2OX187sLqhSzIBA.png)
 
-
+ 
 
 # gc
 
@@ -754,7 +864,7 @@ heapdump导出堆内存的情况。（也会影响性嫩）
 
 
 
-## 三色标记算法
+### 三色标记算法
 
 - 白色：未被标记的对象
 - 灰色：自身被标记，成员变量未被标记
@@ -769,4 +879,52 @@ CMS解决三色标记问题
 CMS使用增量更新
 
 G1使用SATB
+
+
+
+### G1的优化
+
+#### JDK 8u20 字符串去重
+
+- 优点：节省大量内存
+- 缺点：略微多占用的cpu时间，新生代回收时间略微增加。
+
+-XX:+UseStringDeduplication
+
+``` java
+String s1 = new String("hello");
+String s2 = new String("hello");
+```
+
+- 将所有新分配的字符放入一个队列
+- 当新生代回收时，G1并发检查是否由字符串重复
+- 如果他们值一样，让他们引用同一个char[]
+- 注意，与String.intern()不一样
+  - String.intern()关注的是字符串对
+  - 而字符串去重关注的是char[]
+  - 在JVM内部，使用了不同的字符串表
+
+### JDK 8u40并发标记类卸载
+
+所有对象都经过并发标记后，就能知道哪些类不再被使用，当一个类加载器的所有类都不再使用，则卸载它所加载的所有类。
+
+-XX:+ClassUnloadingWithConcurrentMark默认启用。
+
+### JDK 8 u60回收巨型对象
+
+- 一个对象大于region的一半时，称之为巨型对象
+- G1不会对巨型对象进行拷贝
+- 巨型对象回收时会被优先考虑
+- G1会跟踪老年代所有的incoming引用，这样老年代incoming引用为0的巨型对象就可以在新生代垃圾回收时处理掉
+
+### JDK9 并发标记起始时间调整
+
+- 并发标记必须在堆空间占满前完成，否则退化为FullGC
+- JDK9之前需使用-XX:InitiatingHeapOccupancyPercent
+- JDK9可以动态调整
+  - -XX:InitiatingHeapOccupancyPercent用来设置初始值
+  - 进行数据采样并动态调整
+  - 总会添加一个安全的空档空间
+
+
 
