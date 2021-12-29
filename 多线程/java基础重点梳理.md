@@ -1,3 +1,15 @@
+> 写在前面的话
+
+目前已经看过的书
+
+- java
+
+java核心技术 卷1 基础知识 原书第8版
+
+Java 8实战
+
+
+
 # java基础（重点梳理）
 
 
@@ -337,6 +349,12 @@ string的equals方法，是先比较两个对象的类型是否相同，然后�
 ## Collection
 
 ### 迭代器Iterator
+
+- 关于remove
+
+remove方法回删除当前指针所扫过的元素，如果调用next方法，就删除指针之前的一个元素，如果调用previous方法，就删除当前指针之后的一个元素。
+
+
 
 #### 介绍
 
@@ -1033,9 +1051,44 @@ java平台内部锁属于非公平锁，显示lock锁既支持公平锁又支持
 
 
 - lock()获得锁
-
 - unLock()释放锁
-
 - lockInterruptibly()：如果当前线程未被中断则获得锁,如果当前线程被中断则出现异常
-- 
+
+
+
+# java核心技术基础
+
+
+
+## 集合
+
+- Collection接口扩展了Iterable接口，任何集合都可以使用foreacch循环
+
+- 省略掉线程安全集合的常用集合
+
+![](https://s2.loli.net/2021/12/21/45yZqm9eYLiBCwr.png)
+
+
+
+- 各非线程安全集合间的关系
+
+![](https://s2.loli.net/2021/12/22/ZbgsN5OFRSajtA4.png)
+
+
+
+# JAVA8
+
+- 函数式接口
+
+函数式接口就是只定义一个抽象方法的接口。
+
+- java8中常见的函数式接口
+
+![](https://s2.loli.net/2021/12/24/KyJkctmRranl2S6.png)
+
+![](https://s2.loli.net/2021/12/24/gYQHkJTft3I6P5m.png)
+
+
+
+
 
