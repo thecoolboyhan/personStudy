@@ -24,6 +24,7 @@ public class JDKDong {
              * @return
              * @throws Throwable
              */
+            @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 System.out.println(method.getName());
                 if (method.getName().endsWith("bath")) {
