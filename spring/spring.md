@@ -190,7 +190,7 @@ tomcat可以通过Memcache来实现多台服务器共享同一个session
 
 # <spring5核心原理与30个类手写实战>
 
-# spring内功心法
+## spring内功心法
 
 ### 软件架构设计原则
 
@@ -524,7 +524,7 @@ public Object deepClone(){
 
 ##### 动态代理
 
-###### JDK动态代理
+##### JDK动态代理
 
 ```java
 public class JDKMeipo implements InvocationHandler {
@@ -585,3 +585,443 @@ JDK动态代理生成对象的步骤：
 
 ###### 自定义JDK动态代理讲解
 
+1.先创建一个自定义的InvocationHandler接口，用来找到不同的代理工具类
+
+```java
+public interface GPInvocationHandler {
+    Object invoke(Object var1, Method var2, Object[] var3) throws Throwable;
+}
+```
+
+2.创建代理工具类时，要更具传入的代理对象，通过proxy类来生成一个实现了被代理类相同接口的类。利用proxy来实现此类的java源代码，在编译成.class文件，然后通过自定义类加载器把class文件加载到jVM中。
+
+```java
+Class proxyClass = classLoader.findClass("$Proxy0");
+Constructor constructor = proxyClass.getConstructor(GPInvocationHandler.class);
+```
+
+3.让代理工具类实现上面的invoke方法，在invoke方法中，利用反射，执行原方法，和自己想要添加的方法。
+
+```java
+public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    before();
+    method.invoke(target,args);
+    after();
+    return null;
+}
+```
+
+
+
+> JDK动态代理实际上执行的对象并非原来的，而是执行了下面这个实现了和原对象相同接口的新对象，而此对象又利用反射执行了相应代理工具类的invoke方法。
+
+``` java
+package com.代理.dongDJ.myJDKdong;
+import com.代理.dongDJ.Person;
+import java.lang.reflect.*;
+public class $Proxy0 implements com.代理.dongDJ.Person{
+GPInvocationHandler h;
+public $Proxy0(GPInvocationHandler h) {
+this.h=h;}
+public void findLove() {
+try{
+Method m= com.代理.dongDJ.Person.class.getMethod("findLove",new Class[]{});
+this.h.invoke(this,m,new Object[]{});
+}catch(Error _ex) { }catch(Throwable e){
+throw new UndeclaredThrowableException(e);
+}}}
+
+```
+
+
+
+##### CGLib动态代理
+
+- 调用过程
+
+  代理对象调用 this.findLove()方法 ，调用拦截器，methodProxy.invokeSuper，CGLIB$findLove$0，被代理对象findLove()方法。
+
+> CGlib采用了FastClass机制：为代理类和被代理类各生成一个类，这个类会为代理类和被代理类的方法分配一个index（int类型）；这个index当作一个入参，FastClass就可以直接定位要调用的方法并直接进行调用，省去反射调用，所以调用效率比JDk代理通过反射调用高。
+
+FastClass并不是跟代理类一起生成的，而是在第一次执行MethodProxy的invoke()或invokeSuper()方法时生成的，并放在了缓存中。
+
+> FastClass是单例的
+
+```java
+private void init() {
+    if (this.fastClassInfo == null) {
+        synchronized(this.initLock) {
+            if (this.fastClassInfo == null) {
+                MethodProxy.CreateInfo ci = this.createInfo;
+                MethodProxy.FastClassInfo fci = new MethodProxy.FastClassInfo();
+                fci.f1 = helper(ci, ci.c1);
+                fci.f2 = helper(ci, ci.c2);
+                fci.i1 = fci.f1.getIndex(this.sig1);
+                fci.i2 = fci.f2.getIndex(this.sig2);
+                this.fastClassInfo = fci;
+                this.createInfo = null;
+            }
+        }
+    }
+}
+```
+
+
+
+###### 对比
+
+1. JDK动态代理实现了被代理对象的接口，GCLib代理继承了被代理对象。
+2. JDk动态代理和CGLib代理都在运行期生成字节码，JDK动态代理直接写class字节码，CGLib代理使用ASM框架写Class字节码，CGLib代理实现更复杂，生成代理类比JDK动态代理效率低。
+3. JDK动态代理调用代理方法是通过反射机制调用的，CGLib代理是通过FastClass机制直接调用方法的，CGLib代理的执行效率更高。
+
+
+
+##### spring动态代理
+
+- sspring中的代理选择原则
+
+1. 当bean有实现接口时，spring就会用JDK动态代理。
+2. 当bean没有实现接口时，spring会选择CGLib代理。
+3. spring可以通过配置强制使用CGLib代理，只需在spring的配置文件中加入如下代码：
+
+```xml
+<aop:aspectj-autoproxy proxy-target-class="true"/>
+```
+
+- 代理模式的优缺点
+
+优点：
+
+1. 代理模式能把代理对象和真实被调用对象分离。
+2. 在一定程度上降低了系统的耦合性，扩展性好。
+3. 可以起到保护目标对象的作用。
+4. 可以增强目标对象的功能。
+
+缺点：
+
+1. 代理模式会造成系统设计中类的数量增加。
+2. 在客户端和目标对象中增加一个代理对象，会导致请求处理速度变慢。
+3. 增加了系统的复杂度。
+
+
+
+#### 委派模式详解
+
+委派模式不属于GoF23种设计模式。委派模式的基本作用就是负责任务的调度和分配，跟代理模式很像，可以看作一种特殊情况下的静态的全权代理，但是代理模式注重过程，而委派模式注重结果。委派模式在spring中应用的非常多，常用的DispatcherServlet就是用到了委派模式。
+
+例如：老板给项目经理下达任务，项目经理会更具实际情况给每个员工派发任务，待员工把任务完成后，再由项目经理汇报结果。
+
+> 在spring源码中，以Delegate结尾的地方都实现了委派模式。
+
+#### 策略模式
+
+> 定义了算法家族并分别封装起来，让它们之间可以互相替换，此模式使得算法的变化不会影响使用算法的用户。
+
+- 使用场景
+
+1. 系统中有很多类，而它们的区别仅仅在于行为不同。
+2. 一个系统需要动态的在几种算法中选择一种。
+
+
+
+- JDK中的策略模式
+
+比较器 Comparator接口，compare()方法是策略模式的抽象实现，我们常把Comparator接口作为参数实现排序策略。Arrays类的parallelSort方法，TreeMap的构造方法等。
+
+- 优缺点
+
+优点：
+
+1. 策略模式符合开闭原则。
+2. 策略模式可以避免使用多重条件语句，如if...else语句，swithc语句。
+3. 使用策略模式可以提高算法的保密性和安全性。
+
+缺点：
+
+1. 客户端必须知道所有策略，并且自行决定使用哪一个策略类。
+2. 代码中产生非常多的策略类，增加了代码的维护难度。
+
+#### 模板模式
+
+> 又叫模板方法模式，指定义一个算法骨架，并允许子类为一个或者多个步骤提供实现。模板模式使得子类可以在不改变算法结构的情况下，重新定义算法的某些步骤，属于行为型设计模式。
+
+- 适用场景
+
+1. 一次性实现一个算法的不变部分，并将可变的行为留给子类来实现。
+2. 各子类中公共的行为被提取出来，并集中到一个公共的父类中，从而避免代码的重复。
+
+
+
+- 源码中的模板模式
+
+AbstractList的get()方法
+
+HttpServlet的service(),doGet(),doPost()方法。
+
+- 优缺点
+
+优点：
+
+1. 利用模板模式，将相同处理逻辑的代码放到抽象父类中，可以提高代码的复用性。
+2. 将不同的代码放到不同的子类中，通过对子类的扩展增加新的行为，可以提高代码的扩展性。
+3. 把不变的行为写在父类中，去除子类的重复代码，提供了一个很好的代码复用平台，符合开闭原则。
+
+缺点：
+
+1. 每个抽象类都需要一个子类来实现，导致了类的数量增加。
+2. 类数量的增加间接的增加了系统的复杂度。
+3. 因为继承关系自身的缺陷，如果父类添加新的抽象方法，所有子类都要改一遍。
+
+
+
+#### 适配器模式
+
+指将一个类的接口转换成用户期望的另一个接口，使原本接口不兼容的类可以一起工作，属于结构型设计模式。
+
+- 业务场景
+
+1. 已经存在的类的方法和需求不匹配（方法结果相同或相似）的情况。
+2. 适配器模式不是软件初始阶段考虑的设计模式，使随着软件的发展，由于不同厂家、不同产品造成功能类似而接口不同的解决方案，有点亡羊补牢的感觉。
+
+- 适配器模式的优缺点
+
+优点：
+
+1. 能提高类的透明性和复用性，现有的类会被复用但不需要改变。
+2. 目标类和适配器类解耦，可以提高程序的扩展性。
+3. 在很多业务场景中符合开闭原则。
+
+缺点：
+
+1. 在适配器代码编写过程中需要进行全面考虑，可能会增加系统的复杂性。
+2. 增加了代码的阅读难度，降低了代码的可读性，过多使用适配器会使代码变得凌乱。
+
+
+
+#### 装饰者模式
+
+> 在不改变原有对象的基础上，将功能附加到对象上，提供了比继承更有弹性的方案（扩展原有对象的功能），属于结构型模式。
+
+- 场景
+
+1. 扩展一个类或给一个类添加附加职责。
+2. 动态给一个对象添加功能，这项功能可以再动态的撤消。
+
+- 装饰者模式和适配器模式对比
+
+装饰者模式和适配器模式都是包装模式，装饰者模式也是一种特殊的代理模式。
+
+|      | 装饰者模式                                                   | 适配器模式                                                   |
+| ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 形式 | 是一种非常特别的适配器模式                                   | 没有层级关系，装饰者模式有层级关系                           |
+| 定义 | 装饰者和被装饰者实现同一个接口，主要目的是扩展之后依旧保留OOP关系 | 适配器和被适配者没有必然的关系，通常采用继承或代理的形式进行包装 |
+| 关系 | 满足is-a的关系                                               | 满足has-a的关系                                              |
+| 功能 | 注重覆盖，扩展                                               | 注重兼容，转换                                               |
+| 设计 | 前置考虑                                                     | 后置考虑                                                     |
+
+is-a：这种事物(绵羊)是那种事物(羊)中的一个种类。
+
+has-a：这种事物(羊毛)隶属于那种事物(绵羊)，是它的一个部分、部件。
+
+- 装饰者模式的优缺点
+
+优点：
+
+1. 装饰者模式是继承的有力补充，且比继承灵活，可以在不改变原有对象的情况下动态地给一个对象扩展功能，即插即用。
+2. 使用不同的装饰类和这些类的排列组合，可以实现不同效果。
+3. 装饰者模式完全符合开闭原则。
+
+缺点：
+
+1. 会出现更多的代码，更多的类，增加程序的复杂性。
+2. 动态装饰时，多层装饰会更复杂。
+
+
+
+#### 观察者模式
+
+- 场景
+
+定义了对象之间的一对多依赖，让多个观察者对象同时监听一个主体对象，当主体对象发生变化时，他的所有依赖者（观察者）都会收到通知并更新，属于行为型模式。观察者模式有时也叫发布订阅模式。观察者模式主要用于在关联行为之间建立一套触发机制的场景。
+
+- 观察者模式的优缺点
+
+优点：
+
+1. 在观察者和被观察者之间建立了一个抽象的耦合。
+2. 观察者模式支持广播通信。
+
+缺点：
+
+1. 观察者之间有过多的细节依赖，时间消耗多，程序的复杂性更高。
+2. 使用不当会出现循环调用。
+
+
+
+### 各设计模式的总结与对比
+
+23种设计模式汇总表：
+
+![](https://s2.loli.net/2022/02/15/kLGxXVCOzNf8pME.png)
+
+各设计模式关联关系：
+
+![](https://s2.loli.net/2022/02/15/ypMj6m7xkKcTwEI.png)
+
+1. 单例模式和工厂模式
+
+   在实际业务代码中，通常会把工厂类设计为单例模式。
+
+2. 策略模式和工厂模式
+
+   工厂模式的主要目的是封装好创建逻辑，策略模式接收工厂创建好的对象，从而实现不同的行为。
+
+3. 策略模式和委派模式
+
+   策略模式是委派模式内部的一种实现形式，策略模式关注结果是否能相互替代。
+
+   委派模式更关注分发和调度过程。
+
+4. 模板方法模式和工厂方法模式
+
+   工厂方法模式是模板方法模式的一种特殊实现。
+
+5. 模板方法模式和策略模式
+
+   模板方法模式和策略模式都有封装算法。
+
+   策略模式使不同算法可以相互替换，且不影响客户端应用层的使用。
+
+   模板方法模式针对定义一个算法的流程，将一些有细微差异的部分交于子类实现。
+
+   模板方法模式不能改变算法流程，策略模式可以改变算法流程且可替换。策略模式通常用来代替if..else等条件分支语句。
+
+6. 装饰者模式和代理模式
+
+   装饰者模式的关注点在于给对象动态添加方法，而代理模式更加关注控制对象的访问。
+
+   代理模式通常会在代理类中创建被代理对象的实例，而装饰者模式通常会把被装饰者作为构造参数。
+
+   装饰者和代理者虽然都持有对方的引用，但处理重心不一样的。
+
+7. 装饰者模式和适配器模式
+
+   装饰者模式可以实现与被装饰者相同的接口，或者继承被装饰者作为他的子类，而适配器和被适配者可以实现不同的接口。
+
+8. 适配器模式和静态代理模式
+
+   适配器模式可以结合静态代理来实现，保存被适配对象而引用，但不是唯一的实现方式。
+
+9. 适配器模式和策略模式
+
+   在业务比较复杂的情况下，可利用策略模式来优化适配器模式。
+
+
+
+- spring中常用的设计模式
+
+![](https://s2.loli.net/2022/02/15/IlW3ShjoPerJkKE.png)
+
+spring中常用的编程思想汇总
+
+![](https://s2.loli.net/2022/02/15/5i3RENoydaUFusn.png)
+
+## spring5的系统架构
+
+![](https://s2.loli.net/2022/02/15/lIEKRoS82rHzdvX.png)
+
+### 核心容器
+
+> 核心容器由 spring-beans、spring-core、spring-context和spring-expression 4个模块组成。
+
+spring-beans和spring-core模块是spring框架的核心模块，包含了控制反转（Inversion of Control，IOC）和依赖注入（Dependency Injection，DI）。beanFactory使用控制反转反转对应程序的配置和依赖性规范与实际的应用程序代码进行了分离。但beanFactory实例化后并不会自动实例化Bean，只有当bean被使用时，BeanFactory才会对该Bean进行实例化与依赖关系的装配。
+
+- spring-context模块架构于核心模块之上，扩展了BeanFactory，为它添加了Bean生命周期控制、架构事件体系及资源加载透明化等功能。此外，该模块还提供了许多企业级支持，如邮件访问、远程访问、任务调度等，ApplicationContext是该模块的核心接口，它的超类是BeanFactory、与BeanFactory不同，ApplicationContext实例化后会自动对所有的单实例Bean进行实例化与依赖关系的装配，使之处于待用状态。
+
+- Spring-context-support模块是对Spring IoC容器及IoC子容器的扩展支持。
+- spring-context-indeexer模块是Spring的类管理组件和Classpath扫描组件。
+- spring-expression模块是统一表达式语言（EL）的扩展模块，可以查询、管理运行中的对象，同时也可以方便的调用对象方法，以及操作数组、集合等。它的语法类似于传统EL，但提供了额外功能，最出色的要数函数调用和简单字符串的模块函数。EL的特性是基于Spring产品的需求而设计的，可以非常方便地同Spirng IoC进行交互。
+
+
+
+### AOP和设备支持
+
+> AOP和设备支持由spring-aop、spring-aspects和spring-instrument 3个模块组成。
+
+- spring-aop是Spring的另一个核心模块，是AOP主要的实现模块。作为继OOP后对程序员影响最大的编程思想之一，AOP极大地扩展了人们的编程思路。Spring以JVM的动态代理技术为基础，设计出了一系列的AOP横切实现，比如前置通知、返回通知、异常通知等。同时，Pointcut接口可以匹配切入点，可以使用现有的切入点来设计横切面，也可以扩展相关方法根据需求进行切入。
+- spring-aspects模块集成自AspectJ框架，主语是为Spring提供了多种AOP实现方法。
+- spring-instrument模块是基于Java SE中的java.lang.instrument进行设计的，应该算AOP的一个支援模块，主要是在JVM启动时生成一个代理类，程序员通过代理类在运行时修改类的字节，从而改变一个类的功能，实现AOP。
+
+
+
+### 数据访问和集成
+
+> 数据访问与集成由spring-jdbc、spring-tx、spring-orm、spring-oxm和spring-jms5个模块组成。
+
+- spring-jdbc模块是Spring提供的JDBC抽象框架的主要实现模块，用于简化Spring JDBC操作。主要提供JDBC模块方式、关系数据库对象化方式、SimpleJdbc方式、事务管理来简化JDBC编程，主要实现类有JDBC-Template、SimpleJdbcTemplate及NamedParameterJdbcTemplate。
+- spring-tx模块是Spring JDBC事务控制实现模块。Spring对事务做了很好的封装，通过它的AOP配置，可以灵活的在任何一层配置。但是在很多需求和应用中，直接使用JDBC事务控制还是有优势的。事务是以业务逻辑为基础的，一个完整的业务应该对应业务层里的一个方法，如果业务操作失败，则整个事务回滚，所以事务控制是应该放在业务层的。持久层的设计应该遵循一个很重要的原则：保证操作的原子性，及持久层里的每个方法都应该是不可分割的。在使用Spring JDBC控制事务时，应该注意其特殊性。
+- spring-orm模块是ORM框架支持模块，主要集成Hibernate，Java Persistence API（JPA）和Java Data Objects（JDO）用于资源管理、数据访问对象（DAO）的实现和事务策略。
+- spring-oxm模块主要提供一个抽象层以支撑OXM（OXM是Object-to-XML-Mapping的缩写，它是一个O/M-mapper，将Java对象映射成XML数据，或者将XML数据映射成Java对象），例如JAXB、Castor、XMLBeans、JiBX和XStream等。
+- spring-jms模块能够发送和接收信息，自Spring 4.1开始，它还提供了对spring-messageing模块的支撑。
+
+### Web组件
+
+> Web组件由spring-web、spring-webmvc、spring-websocket和spring-webflux 4个模块组成。
+
+- spring-web模块为Spring提供了最基础的Web支持，主要建立在核心容器之上，通过Servlet或者Listeners来初始化IoC容器，也包含一些与Web相关的支持。
+
+- 众所周知，spring-webmvc模块是一个Web-Servlet模块，实现了spring MVC的Web应用。
+- spring-websocket模块是与Web前端进行全双工通信的协议。
+- spring-webflux是一个新的非阻塞函数式Reactive Web框架，可以用来建立异步的、非阻塞的、事件驱动的服务，并且扩展性非常好。
+
+
+
+### 通信报文
+
+> 通信报文即spring-messaging模块，它是Spring 4新加入的一个模块，主要职责是为Spring框架集成一些基础的报文传送应用。
+
+### 集成测试
+
+> 集成测试即spring-test模块，主要为测试提供支持，使得在不需要将程序发布到应用服务器或者连接到其他设施的情况下能够进行一些集成测试或者其他测试，这对于任何企业都是非常重要的。
+
+### 集成兼容
+
+集成兼容即spring-framework-bom模块，主要解决Spring的不同模块依赖版本不同的问题。
+
+### 各模块之间的依赖关系
+
+![](https://s2.loli.net/2022/02/16/8tmTVPSNlyqJdpr.png)
+
+
+
+## Spring核心原理
+
+### Spring核心容器类图
+
+- BeanFactory
+
+BeanFactory不关心对象是怎么定义和加载的，只关心能从工厂中得到什么样的对象。
+
+
+
+![](https://s2.loli.net/2022/02/25/q4buDHlIQ2wz8Ax.png)
+
+ApplicationContext是Spring提供的一个高级的IoC容器，它除了能够提供IoC容器的基本功能，还为用户提供了以下附加服务。
+
+1. 支持信息源，可以实现国际化（实现MessageSource接口）。
+2. 访问资源（实现ResourcePatternResolver接口）。
+3. 支持应用事件（实现ApplicationEventPublisher接口）。
+
+
+
+- BeanDefinition
+
+Bean对象在Spring实现中是以BeanDefinition来描述的。
+
+![](https://s2.loli.net/2022/02/25/nPSYcv1r3zGIUJL.png)
+
+- BeanDefinitionReader
+
+Bean的解析主要就是对Spring配置文件的解析。这个解析过程主要通过BeanDefinitionReader来完成。
+
+![](https://s2.loli.net/2022/02/25/sMUXuajJg6zfe1I.png)

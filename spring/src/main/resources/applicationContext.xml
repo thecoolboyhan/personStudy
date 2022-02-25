@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
-    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop.xsd">
 
     <bean id="person" class="com.test.bean.Person">
         <constructor-arg name="name" value="DD"></constructor-arg>
@@ -10,4 +10,5 @@
         <constructor-arg name="food" ref="food"></constructor-arg>
     </bean>
     <bean id="food" class="com.test.bean.Food"></bean>
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
 </beans>

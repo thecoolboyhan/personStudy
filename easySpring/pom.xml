@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.spring</groupId>
-    <artifactId>spring01</artifactId>
+    <artifactId>easySpring</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <dependencies>
