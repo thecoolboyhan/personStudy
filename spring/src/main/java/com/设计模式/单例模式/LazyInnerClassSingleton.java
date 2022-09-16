@@ -1,9 +1,6 @@
 package com.设计模式.单例模式;
 
-import com.sun.org.apache.bcel.internal.generic.NEW;
-
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * 静态内部类饿汉式单例模式
