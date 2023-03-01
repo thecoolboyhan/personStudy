@@ -6,9 +6,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandler;
-import io.netty.util.CharsetUtil;
-
-import java.lang.invoke.VarHandle;
 
 /**
  * 韩永发
