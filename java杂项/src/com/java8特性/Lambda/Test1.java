@@ -1,8 +1,5 @@
 package com.java8特性.Lambda;
 
-import com.sun.org.apache.bcel.internal.generic.NEW;
-
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class Test1 {
