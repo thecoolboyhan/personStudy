@@ -1,5 +1,299 @@
 # 拉钩的redis
 
+## 数据结构
+
+### 基本数据类型
+
+- string字符串
+
+- list
+- set集合
+- sortedset有序集合
+- hash类型（散列表）
+- bitmap位图类型
+- geo地理位置类型
+- stream数据流类型
+
+### redisDB结构
+
+redis会在初始化时，会预先分配16个数据库
+
+- redisDB的具体结构：
+
+``` c++
+typedef struct redisDb{
+    int id;      //id数据库序号，为0-15（默认redis有16个数据库）
+    long avg_ttl;//存储数据库对象的平均ttl（time to live），用于统计
+    dict *dict;//存储所有的key-value
+    dict *blocking_keys;//blpop存储阻塞key和客户端对象
+    dict *ready_keys;//阻塞后push响应阻塞客户端，存储阻塞后push的key和客户端对象
+    dict *wathced_keys;//存储watch监控的key和客户端对象
+}
+```
+
+
+
+### redis的7种type
+
+#### 字符串 SDS
+
+![](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-412:55:27-1693803326815.png)
+
+``` c
+struct sdshdr{
+ //记录buf数据中已使用字节的数量
+    int len;
+    //记录buf数组中未使用字节的数量
+    int free;
+    //字符数组，用于保存字符串
+    char buf[];
+}
+```
+
+优势：
+
+1. 通过len和free可以用O（1）的时间复杂度来获取字符串的长度（c语言是O(n)）
+2. 因为已经记录了长度，所以可以在可能会发生缓冲区溢出时自动重新分配内存。
+
+
+
+#### 跳跃表（重点)
+
+跳跃表是有序集合（sorted-set）的底层实现，效率高，实现简单。
+
+- 思想：
+
+> 将有序链表中的部分节点分层，每层都是一个有序链表。
+
+- 查找：
+
+优先从最高层开始向后查找，当到达某个节点时，如果next节点值大于要查找的值或next指针指向null，则从当前节点下降一层继续向后查找。
+
+举例：
+
+![](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-512:17:01-1693887420857.png)
+
+> 类似于2分查找
+
+- 插入和删除：
+
+先从最下层开始构建，除开始和结束节点，每向上一层，都要有1/2的几率解决是否构建当前元素。
+
+删除：
+
+在每一层都找到指定元素，删除需要删除的元素。
+
+- 跳表的特点：
+
+1. 每层都是一个有序链表
+2. 查找次数近似于层数的1/2
+3. 最底层包含所有元素
+4. 空间复杂度O(n)扩充了一倍
+
+- Redis的跳表实现：
+
+``` c
+typedef struct zskiplistNode{
+    sds ele;//存储字符串类型数据
+    double score;//存储排序的分值
+    struct zskiplistNode *backward;//后退指针，指向当前节点最底层的前一个节点
+    //层，柔性数组，随机生成1-64的值
+    struct zskiplistLevel{
+        struct zskiplistNode *forward;//指向本层下一个节点
+        unsigned int span;//本层下一个节点到本层的元素个数
+    } level[];
+} zskiplistNode;
+
+//链表
+typedef struct zskiplist{
+    //表头节点和为节点
+    struct zskiplistNode *header, *tail;
+    //表中节点的数量
+    unsigned long length;
+    //表中层数最大的节点的层数
+    int level;
+}zskiplist;
+```
+
+结构示意图：
+
+![](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-512:30:46-1693888245130.png)
+
+
+
+#### 字典（重点+难点）
+
+字典dict又称散列表（hash），用来存储键值对的一种数据结构。
+
+Redis整个数据库是用字典来存储的。
+
+对redis进行curd其实就是对字典数据进行curd。
+
+
+
+- 数组：数据量少时，使用数组加偏移量的方式来存储对象，可以O(1）时间复杂度来获取对象。
+
+如果数据变多时，还是需要使用到hash表
+
+
+
+- hash：
+
+redis解决hash冲突时，采用拉链法来处理。
+
+情况类似于java的hashmap（没有树化）
+
+- 渐进式rehash
+
+扩容时需要rehash，但当数据特别大时，rehash是一个非常缓慢的过程，所以需要进行优化。
+
+服务器忙，则只对一个节点进行rehash。
+
+服务器闲，可批量rehash（100个节点）
+
+字典的应用场景：
+
+1. 数据库存储数据
+2. 散列表对象
+3. 哨兵模式的主从节点管理
+
+
+
+#### 压缩列表
+
+> 由一系列特殊编码的连续内存块组成的顺序型数据结构。
+
+- 结构：
+
+
+
+![](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-613:26:19-1693977978141.png)
+
+zibytes:压缩列表的字节长度
+
+zltail：压缩列表的尾元素相对于起始地址的偏移量
+
+zlien：压缩列表的元素个数
+
+entry1..entryx：压缩列表的各个节点
+
+zlend：压缩列表的结尾，占一个字节，恒为0xFF（255）
+
+- entry的编码结构：
+
+![](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-614:13:54-1693980833194.png)
+
+previous_entry_length：前一个元素的字节长度
+
+encoding：表示当前元素的编码
+
+content：数据内容
+
+``` c
+typedef struct zlentry{
+    unsigned int prevrawlensize;  //previous_entry_length字段的长度
+    unsigned int prevrawlen;	//previous_entry_length字段存储的内容
+    unsigned int lensize;		//encoding字段的长度
+    unsigned int len;			//数据内容长度
+    unsigned int headersize;	//当前元素的首部长度，即previous_entry_length字段长度与encoding字段长度之和。
+    unsigned char encoding;		//数据类型
+    unsigned char *p;			//当前元素首地址
+}zlentry;
+```
+
+
+
+- 应用场景：
+
+sroted-set和hash元素个数少且是小整数或短字符串（直接使用）
+
+list用快速链表（quicklist）数据结构存储，而快速链表是双向列表和压缩列表的组合（间接使用）
+
+
+
+#### 整数集合（intset)
+
+> 有序的（整数升序），存储整数的连续存储结构。
+
+当Redis集合类型的元素都是整数并且都处在64位有效符号整数范围内，就使用该结构存储。
+
+
+
+![2023-9-1516:11:05-1694765465742.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-1516:11:05-1694765465742.png)
+
+``` c
+typedef struct intset{
+    uint32_t encoding;	//编码方式
+    uint32_t length;	//集合包含的元素数量
+    int8_t contents[];	//保存元素的数组
+}
+```
+
+- 应用场景：
+
+可以存储整数值，并且保证集合中不会出现重复元素。
+
+
+
+#### 快速列表（重点）
+
+> 快速列表（quicklist）是Redis底层重要的数据结构。是列表的底层实现。（Redis 3.2之前，Redis采用双向链表和压缩列表实现）。在Redis 3.2 之后，结合双向链表和压缩列表的优点，设计出了qucklist。
+
+快速列表是一个双向链表，链表中的每个节点是一个压缩列表结构。每个节点的压缩列表都可以存储多个数据元素。
+
+![2023-9-1516:26:51-1694766411320.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2023-9-1516:26:51-1694766411320.png)
+
+
+
+- 数据结构：
+
+``` c
+typedef struct quicklist{
+    quicklistNode *head;		//指向quicklist的头部
+    quicklistNode *tail;		//指向quicklist的尾部
+    unsigned long count;		//列表中所有元素项个数的总和
+    unsigned int len;			//quicklist节点的个数，即ziplist的个数
+    int fill : 16;				//ziplist大小限定，由list-max-ziplist-size 给定（Redis设定）
+    unsigned int compress: 16; //节点压缩深度设置，由list-compress-depth给定（redis设定）
+}quicklist;
+```
+
+
+
+``` c
+typedef struck quicklistNode{
+    struct quicklistNode *prev;	//指向上一个ziplist节点
+    struct quicklistNode *next;	//指向下一个ziplist节点
+    unsigned char *zl;			//数据指针，如果没有被压缩，就指向ziplist结构，反之指向qucklistLZF结构。
+    unsigned int sz;			//指向ziplist结构的总长度（内存占用长度）
+    unsigned int count : 16;	//表示ziplist中数据项个数
+    unsigned int encoding : 2;	//编码方式，1--ziplist，2--quicklistLZF
+    unsigned int container : 2;	//预留字段，存放数据的方式，1--NONE，2--ziplist
+    unsigned int recompress : 1;//解压标记，当查看一个被压缩的数据时，需要暂时解压缩，标记此参数为1之后再重新进行压缩。
+    unsigned int attempted_compress : 1;	//测试相关
+    unsigned int extra : 10;	//扩展字段，暂时没用
+    
+}quicklistNode;
+```
+
+
+
+- 数据压缩
+
+quicklist每个节点的实际数据存储结构为ziplist，这种结构的优势在于节省存储空间。为了进一步降低ziplist的存储空间。还可以对ziplist进行压缩。Redis采用的压缩算法是LZF。其基本思想是：数据与前面重复的记录重复位置及长度。不重复的记录原始数据。
+
+
+
+> 压缩过后的数据可以分成多个片段，每个片段有两个部分，
+
+
+
+
+
+
+
+
+
 
 
 ## 过期和淘汰策略

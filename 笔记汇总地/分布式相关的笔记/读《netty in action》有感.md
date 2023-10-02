@@ -206,4 +206,9 @@ NIO2只支持JDK7之后的版本，而且不支持UDP协议。NIO2只为TCP量�
 2. 创建NioEventLoopGroup实例，用于事件处理，如接入新连接，读写数据等。
 3. 设置InetSocketAddress，绑定到服务端上。
 4. 构建一个childHandler，用于处理接入的各个连接。
-5. 
+5. 调用serverBootstrap.bind()，绑定到server上。
+
+
+
+netty 每个channel通过添加多个handler的方式，来控制channel的业务逻辑。每个handler最先被执行的是channelRead方法。
+
