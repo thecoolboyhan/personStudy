@@ -1,6 +1,6 @@
 package com.java8特性.Lambda;
 
-import sun.rmi.runtime.Log;
+
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
