@@ -4,51 +4,53 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class Demo {
 
     public static void main(String[] args) throws InterruptedException {
         Solution solution = new Solution();
-        System.out.println(solution.minOperations("1100011000", "0101001010", 2));
+
 
     }
 
 
     private  class Example{
 
-        public void merge(Comparable[] a,int lo,int mid, int hi){
-            //放最后排序的结果
-            Comparable[] res=new Comparable[a.length];
-            //将数组的lo到mid，和mid+1到hi部分归并
-            int i=lo,j=mid+1;
-            for(int k=lo;k<=hi;k++)
-                res[k]=a[k];
 
-            for(int k=lo;k<=hi;k++)
-                //如果左边界大于中点，表示左边元素已经被取完，从右边取
-                if (i>mid)
-                    a[k]=res[j++];
-                    //如果右边大于边界，右边取完，取左边
-                else if (j>hi)
-                    a[k]=res[i++];
-                    //如果右边小于左边，取右边
-                else if(less(res[j],res[i]))
-                    a[k]=res[j++];
-                else
-                    //否则取左边
-                    a[k]=res[i++];
-        }
-        //辅助数组
-        private Comparable[] aux;
         public void sort(Comparable[] a){
-            int n = a.length;
-            aux=new Comparable[n];
-            //每次对sz个元素来排序
-            for(int sz=1;sz<n;sz+=sz)
-                //左边界从0开始，每段左边界都是上一次+sz
-                for(int lo=0;lo<n-sz;lo+=sz+sz)
-                    //对于每次需要归并的两个数组，左边边界已经确认，中点为小数组+sz-1，右边边界为中点+sz和数组长度-1取较小值
-                    merge(a,lo,lo+sz-1,Math.min(lo+sz+sz+-1,n-1));
+           sort(a,0,a.length-1);
+        }
+        private void sort(Comparable[] a, int lo, int hi) {
+            //终止条件
+            if(hi<=lo)  return ;
+            //拆封数组
+            int j =partition(a,lo,hi);
+            //排前面
+            sort(a,lo,j-1);
+            //后面
+            sort(a,j+1,hi);
+        }
+
+        //把目标数字放到合适的位置
+        private int partition(Comparable[] a, int lo, int hi) {
+            //i表示当前遍历到第几个数，j表示上线边界
+            int i=lo,j=hi+1;
+            //选第一个数出来放到合适的位置，用第一个数来切割
+            Comparable v=a[lo];
+            while(true){
+                //找到从左到右第一个大于目标数组的数
+                while(less(a[++i],v))   if(i==hi)   break;
+                //从右到左，第一个小于目标数字的数
+                while(less(v,a[--j]))   if(j==lo)   break;
+                //跳出条件，当i==j时，表示i左边的数字都小于目标数，右边的数字都大于目标数
+                if(i>=j)    break;
+                //把小于目标的数字放到左边，大于目标的数字放到右边
+                exch(a,i,j);
+            }
+            //由于左边界为选出的数字，上方循环到跳出条件时，j最后一个指向小于目前的数字，交换这两个数字
+            exch(a,lo,j);
+            return j;
         }
 
 
@@ -83,34 +85,23 @@ public class Demo {
 }
 
 class Solution {
-    public int minOperations(String s1, String s2, int x) {
-        if(s1.equals(s2))
-            return 0;
-        char[] chars1=s1.toCharArray();
-        char[] chars2=s2.toCharArray();
-        int res=0;
-        int[] nums=new int[chars1.length];
-        int t=0;
-        for(int i=0;i<nums.length;i++){
-            if(chars1[i]!=chars2[i]){
-                nums[i]=1;
-                t++;
-            }
+    public List<String> findHighAccessEmployees(List<List<String>> access_times) {
+        List<List<String>> collect = access_times.stream().sorted((o1, o2) -> {
+            Integer a = Integer.valueOf(o1.get(1));
+            Integer b = Integer.valueOf(o2.get(1));
+            return a - b;
+        }).collect(Collectors.toList());
+        Map<String,Deque<Integer>> map=new HashMap<>();
+        Set<String> res=new HashSet<>();
+        for (List<String> list : collect) {
+            String name=list.get(0);
+            int time= Integer.parseInt(list.get(1));
+            Deque<Integer> queue = map.getOrDefault(name, new LinkedList<>());
+            while (!queue.isEmpty()&&time-queue.peek()>=100)  queue.pop();
+            queue.offer(time);
+            if(queue.size()>=3) res.add(name);
+            map.put(name,queue);
         }
-        if((t&1)!=0)
-            return -1;
-        boolean f=false;
-        for(int i=0;i<nums.length;i++){
-            if(i<nums.length-1&&nums[i]==1){
-                res++;
-                nums[i]=0;
-                nums[i+1]=0;
-                i++;
-                t-=2;
-            }
-        }
-        return res+(t/2)*x;
+        return new ArrayList<>(res);
     }
 }
-
-
