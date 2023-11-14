@@ -22,14 +22,22 @@ public class Demo {
            sort(a,0,a.length-1);
         }
         private void sort(Comparable[] a, int lo, int hi) {
-            //终止条件
-            if(hi<=lo)  return ;
-            //拆封数组
-            int j =partition(a,lo,hi);
-            //排前面
-            sort(a,lo,j-1);
-            //后面
-            sort(a,j+1,hi);
+            //跳出条件
+           if (hi<=lo)  return;
+           //lt:要排序的数字，i起始位置，gt右边界
+           int lt=lo,i=lo+1,gt=hi;
+            Comparable v = a[lo];
+            //从第一个元素一直判断到最后一个元素
+            while(i<=gt){
+                //当前元素和v比较
+                int cmp = a[i].compareTo(v);
+                //如果当前元素比要比较的元素小，交换当前元素和目标元素，目标指针后移，保证目标指针左侧的元素都
+                if(cmp<0) exch(a,lt++,i++);
+                else if(cmp>0) exch(a,i,gt--);
+                else i++;
+            }
+            sort(a,lo,lt-1);
+            sort(a,gt+1,hi);
         }
 
         //把目标数字放到合适的位置
