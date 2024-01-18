@@ -1,12 +1,51 @@
 package com.rmi.client;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.Arrays;
+import java.util.List;
 
 public class Demo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws CloneNotSupportedException, InterruptedException, IOException {
+        Solution solution = new Solution();
+        System.out.println(solution.minimumRemoval(new int[]{4, 1, 6, 5}));
+    }
 
+
+    public static void merge(List<File> files , String to) {
+        File t = new File(to);
+        FileInputStream in = null;
+        FileChannel inChannel = null;
+
+        FileOutputStream out = null ;
+        FileChannel outChannel = null ;
+        try {
+            out = new FileOutputStream(t, true);
+            outChannel = out.getChannel();
+            // 记录新文件最后一个数据的位置
+            long start = 0;
+            for (File file : files) {
+                in = new FileInputStream(file);
+                inChannel = in.getChannel();
+                // 从inChannel中读取file.length()长度的数据，写入outChannel的start处
+                outChannel.transferFrom(inChannel, start, file.length());
+                start += file.length();
+                in.close();
+                inChannel.close();
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                out.close();
+                outChannel.close();
+            } catch (Exception e2) {
+            }
+        }
     }
 
     //二分查找（基于有序数组）
@@ -87,23 +126,26 @@ public class Demo {
 }
 
 class Solution {
-    public List<String> findHighAccessEmployees(List<List<String>> access_times) {
-        List<List<String>> collect = access_times.stream().sorted((o1, o2) -> {
-            Integer a = Integer.valueOf(o1.get(1));
-            Integer b = Integer.valueOf(o2.get(1));
-            return a - b;
-        }).collect(Collectors.toList());
-        Map<String,Deque<Integer>> map=new HashMap<>();
-        Set<String> res=new HashSet<>();
-        for (List<String> list : collect) {
-            String name=list.get(0);
-            int time= Integer.parseInt(list.get(1));
-            Deque<Integer> queue = map.getOrDefault(name, new LinkedList<>());
-            while (!queue.isEmpty()&&time-queue.peek()>=100)  queue.pop();
-            queue.offer(time);
-            if(queue.size()>=3) res.add(name);
-            map.put(name,queue);
+    public long minimumRemoval(int[] beans) {
+        long sum=0;
+        for (int bean : beans) {
+            sum+=bean;
         }
-        return new ArrayList<>(res);
+        Arrays.sort(beans);
+        sum-=beans[beans.length-1];
+        long res=sum;
+        int p=beans[beans.length-1];
+        long x=0;
+        for(int i=2;i<=beans.length;i++){
+            long t=p-beans[beans.length-i];
+            t*=(i-1);
+            x+=t;
+            sum-=beans[beans.length-i];
+            res=Math.min(res,sum+x);
+            p=beans[beans.length-i];
+        }
+        return res;
     }
 }
+
+

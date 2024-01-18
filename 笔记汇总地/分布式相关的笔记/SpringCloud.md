@@ -589,6 +589,12 @@ refresh_token:当access_token过期时，服务器可以使用这个token去认�
 
 # Nacos（服务注册，配置中心）
 
+> 服务发现、配置管理和服务管理平台。
+
+Nacos=Eureka+Config+Bus
+
+
+
 
 
 ## 健康检查

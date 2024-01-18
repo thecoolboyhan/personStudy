@@ -1532,7 +1532,7 @@ LocaleResolver组件的resolveViewName（）方法寻要两个参数：一个是
 MultipartHttpServletRequest可以通过getFile（）方法直接获取文件。如果上传多个文件，调用getFileMap（）方法得到Map<Name,File>的结构。
 
 - FlashMapManager
-用于重定向时的参数传递，比如在处理用户订单时，为了避免重复提交，可以处理完post请求后重定向到一个gett请求，这个gett请求可以用来显示订单详情之类的信息。因为重定向是没有传递参数这一功能的，如果不想把参数写进URL，那么可以通过FlashMap来传递。只需要在重定向之前将数据写入flashMap中，这样重定向之后的Handler中Spring就会自动将其设置到Model中，在显示订单信息的页面上就可以直接从Mpdel中获取数据。
+  用于重定向时的参数传递，比如在处理用户订单时，为了避免重复提交，可以处理完post请求后重定向到一个gett请求，这个gett请求可以用来显示订单详情之类的信息。因为重定向是没有传递参数这一功能的，如果不想把参数写进URL，那么可以通过FlashMap来传递。只需要在重定向之前将数据写入flashMap中，这样重定向之后的Handler中Spring就会自动将其设置到Model中，在显示订单信息的页面上就可以直接从Mpdel中获取数据。
     - FlashMap
 
 FlashMapManager就是用来管理FlashMap的。
@@ -1709,3 +1709,318 @@ Springboot-starter-web直接依赖了json，tomcat，springMVC等相关依赖，
 9. 发出结束执行的事件通知
 10. 执行Runners（执行自定义的stater）
 11. 返回context对象
+
+
+
+# Spring迭代史
+
+> spring的第一个版本于2002年10发布，由一个带有易于配置和使用的控制反转（IoC）容器的小型内核组成。多年来spring已经成为JavaEE的主要替代品，并且发展成一个由许多不同项目组成的成熟技术。
+
+## Spring 0.9
+
+该框架第一个公开的版本，以Exper One-on-One：J2EE一书为基础，提供了bean配置基础、AOP支持、JDBC抽象框架、抽象事务支持等。该版本没有官方参考文档，但可以在SourceForge上找到现有的源代码和文档。
+
+## Spring 1.x
+
+第一个带有官方参考文档的版本。它由下图所示的七个模块组成。
+
+![2024-1-1711:02:42-1705460562385.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1711:02:42-1705460562385.png)
+
+- Spring Core：bean容器以及支持的实用程序。
+- SpringContext：ApplicationContext、UI、验证、JNDI、Enterprise JavaBean（EJB）、远程处理和邮件支持。
+- Spring ORM：Hibernate、iBATIS和Java Data Object（JDO）支持。
+
+1. Hibernate：在Java对象和关系数据库之间建立映射，已实现直接存取Java对象。
+2. JDO：和JPA一样，是对象持久化的规范。
+
+- Spring AOP：符合AOP联盟的面向切面编程（AOP）实现。
+- Spring Web：基本集成功能，比如多部分功能、通过servlet监听器进行上下文初始化以及面向Web的应用程序上下文。
+- Spring Web MVC：基于Web 的Model-View-Controller（MVC）框架。
+
+
+
+## Spring 2.x
+
+该版本由下图所示六个模块组成。现在Spring Context模块包含在Spring Core中，而在Spring 2.x版本中，所有的Spring Web组件都由单个项目表示。
+
+![2024-1-1714:16:50-1705472209888.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1714:16:50-1705472209888.png)
+
+
+
+- 通过使用新的基于XML Schema的配置而不是DTO格式来简化XML配置。值得注意的改进方面包括bean定义、AOP以及声明式事务。
+- 用于Web和门户的新bean作用域（请求、会话和全局会话）。
+- 支持AOP开发的@AspectJ注解
+- Java Persistence API（JPA）抽象层。
+- 完全支持异步JMS消息驱动的POJO（用于普通的旧Java对象）。
+
+1. JMS：一种消息发布订阅机制，一个服务端维护消息，所有使用者注册在此服务端上，各服务之间通讯不需要对方在线，所有客户端接收消息只要去服务端接收数据。通常用来和RMI对比。
+
+- JDBC简化包括在使用Java5+时的SimpleJDBCTemplate。
+- JDBC命名参数支持（NamedParameterJdbcTemplate）。
+- 针对Spring MVC的表单标签库。
+- 对Porlet MVC框架的介绍。
+- 动态语言支持。可以使用JRuby、Groovy以及BeanShell来编写bean。
+- JMX中的通知支持以及可控的MBean注册。
+
+1. JMX：用于监控和管理Java应用程序运行状态、设备和资源信息、Java虚拟机运行情况等信息。
+
+- 为调度任务而引入的TaskExecutor注册。
+- 为调度任务而引入的TaskExecutor抽象。
+- Java注解支持，特别针对@Transactional、@Required和@AspectJ。
+
+
+
+## Spring 2.5.x
+
+该版本包含以下功能。
+
+- 名为@Autowired的新配置注解以及对JSR-250注解（@Resource、@PostConstruct和PreDestroy）支持。
+
+1. @PostConstruct：JDK默认的注解，用来实现Bean初始化之前的操作。
+
+执行顺序：
+
+Construct（构造方法）-》@Autowired（依赖注入）-> @PostConstruct（注释的初始化方法）
+
+依赖注入完成后用于执行的初始化方法，并且只会被执行一次
+
+2. @PreDestroy
+
+在服务器卸载Servlet的时候运行，并且只会被执行一次。
+
+- 新的构造型注解：@Component、@Repository、@Service、和@Controller。
+- 自动类路径扫描支持，可以检测和连接带有构造型注解的类。
+- AOP更新，包括一个新的bean切入点元素以及AspectJ加载时织入（weaving）。
+- 完整的WebSphere事务管理支持。
+
+1. WebSphere
+
+类似于tomcat，IBM公司推出的集成软件平台，收费不开源。
+
+- 除了SpringMVC@Controller注解，还添加了@RequestMapping、@RequestParam和@ModelAttribute注解，从而支持通过注解配置进行请求处理。
+
+1. ModelAttribute
+
+标注在方法，被标注此注解的方法可以用来给model添加属性。
+
+- 支持Tiles2。
+
+1. tiles2：XML的新的配置方式。
+
+- 支持JSF1.2。
+
+1. JSF1.2：JSP新的配置方式
+
+- 支持JAX-WS2.0/2.1。
+- 引入了Spring TestContext Framework，提供注解驱动和集成测试支持，不受所用测试框架的影响。
+- 能够将Spring应用程序上下文部署为JCA配置器。
+
+1. JVA：应用和外部连接的规范。
+
+## Spring 3.x
+
+这是基于Java5的第一个版本，旨在充分利用Java5的功能，如泛型、可变参数和其他语言改进。该版本引入基于Java的@Configuration模型。目前已经对框架进行了修改，分别针对每个模块JAR使用一棵源代码树进行管理。
+
+如下图所示的抽象描述
+
+![2024-1-1714:53:57-1705474437048.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1714:53:57-1705474437048.png)
+
+
+
+- 支持Java5功能，例如泛型、可变参数以及其他改进。
+- 对Callables、Futures、ExeutoService适配器和ThreadFactory集成提供很好的支持。
+- 框架模块目前针对每个模块JAR都使用一棵源代码树进行分别管理。
+- Spring Expression Language（SpEL）的引入。
+
+1. SPEL
+
+能在运行时构建复杂表达式、存取对象图属性、对象方法调用等等，并且能与Spring功能完美整合，如能用来配置Bean定义。
+
+
+
+- 核心Java Config功能和注解的集成。
+- 通用型转换系统和字段格式化系统。
+- 全面支持REST。
+
+1. Rest风格：
+
+对于同一个类或者对象，增删改查操作，传统可能需要调用不同的接口，rest风格可以根据调用的请求类型（POST，GET，DELETE,PUT)来用同一个接口，直接完成上述的所有操作。
+
+- 新的MVC XML 名称空间和其他注解，例如Spring MVC中的@CookieValue和RequestHeaders。
+- 验证增强功能和JSR-303（bean验证）支持。
+- 对JavaEE的早期支持，包括@Async @Asynchronous注解、JSR303、JSF2.0、JPA2.0等。
+- 支持嵌入式数据库、例如HSQL、H2和Derby。
+
+
+
+## Spring 3.1.x
+
+该版本包含以下功能。
+
+- 新的缓冲对象。
+- 可以用XML定义bean定义配置文件，同时也支持@Profile注解。
+- 针对统一属性的环境抽象。
+- 与常见Spring XML名称空间元素等价的注解，如@ComponentScan、@EnableTransationManagement、@EnableCaching、@EnableScheduling、@EnableAsync、@EnableAspectAutoProxy、@EnableLoadTimeWeaving和@EnableSpringConfigured。
+- 支持Hibernate 4.
+- Spring TestContext Framework对@Configuration类和bean定义配置文件的支持。
+- 名称空间c：简化了构造函数注入。
+
+![2024-1-1715:05:02-1705475102295.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1715:05:02-1705475102295.png)
+
+- 支持Servlet 3中Servlet容器的基于代码的配置。
+- 能够在不使用persistence.xml的情况下启动JPA EntityManageFactory。
+- 将Flash和RedirectAttributes添加到Spring MVC中，从而允许使用HTTP会话重定向属性。
+- URI模块变量增强功能。
+- 能够使用@Valid来注解Spring MVC @RequestBody控制器方法参数。
+
+## Spring 3.2.x
+
+该版本包含以下功能。
+
+- 支持基于Servlet 3的异步请求处理。
+- 新的Spring MVC测试框架。
+- 新的Spring MVC注解 @ControllerAdvice和Matrix Variable。
+- 支持RestTemplate和@RequestBody参数中泛型类型。
+- 支持Jackson JSON2.
+- 支持Tiles 3.
+- 现在，@RequestBody或@RequestPart参数的后面可以跟着一个Errors参数，从而可以对验证错误进行处理。
+- 能够通过使用MVC名称空间和Java Config配置选项来排除URL模式。
+- 支持没有Joda Time的@DateTimeFormat。
+- 全局日期和时间格式化。
+- 跨框架的并发优化，从而最小化锁定，并改进了作用域，原型bean的并发创建。
+- 新的基于Gradle的构建系统。
+- 迁移到GIthub
+- 在框架和第三方依赖中支持精简的Java SE7/OpenJDK 7。现在，CGLIB和ASM已经成为Spring的一部分。除了AspectJ 1.6，其他版本都支持AspectJ 1.7。
+
+
+
+## Spring 4.0.x
+
+这是一个重要的Spring版本，也是第一个完全支持Java 8的版本，虽然仍然可以使用较久版本的Java，但Java SE6已经提出了最低版本要求。弃用的类和方法已经被删除，但模块组织几乎相同。
+
+![2024-1-1715:25:01-1705476300515.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1715:25:01-1705476300515.png)
+
+- 通过spring.io网站上的一系列入门指南提高了入门体验。
+- 从先前的Spring 3 版本中删除弃用的软件包和方法。
+- 支持Java8，将最低Java版本提高到6 Update 18.
+- Java EE6及以上版本现在被认为是Spring Framework 4.0的基准。
+- Groovy bean定义DSL，允许通过Groovy语法配置bean定义。
+- 核心容器、测试和一般web改进。
+- WebSocket、SocJS、和STOMP消息。
+
+## Spring 4.2.x
+
+该版本包含以下功能。
+
+- 核心改进（例如，引入@AliaFor，并修改现有注解以使用它）。
+- 全面支持Hiermate ORM 5.0.
+- JMS和Web改进。
+- 对WebSocket消息传递的改进。
+- 测试改进，最引人注目的是引入了@Commit来替换Rollback（false），并引入AopTestUtils使用工具类，允许访问隐藏在Spring代理后面的底层对象。
+
+
+
+## Spring 4.3.x
+
+该版本包含以下功能。
+
+- 完善了编程模型。
+- 在核心容器（包含ASM 5.1、CGLIB 3.2.4以及spring-core.jar中的Objenesis 2.4） 和MVC方面有了相关大的改进。
+- 添加了组合注解。
+- Spring TestContext Framework需要JUnit 4.12或更高版本。
+- 支持新的库，包括Hibernate ORM 5.2、Hibernate Validafor 5.3、Tomcat 8.5和9.0、Jacson 2.8等。
+
+
+
+## Spring 5.x
+
+- 这是一个主要版本。整个框架代码都基于Java 8，并且自2016年7月完全兼容。
+- 支持Portlet、Velocity、JaspReports、XMLBeans、JDO、Guava、Tiles 2和Hibernate 3。
+- 现在XML配置名称空间被流式传输到未版本化的模式；虽然特定版本的声明仍然被支持，但要针对最新的XSD架构进行验证。
+- 充分利用Java 8的强大功能，从而在性能上得到极大的改进。
+- Resource抽象为防御getFile访问提供了isFile指示符。
+- Spring提供的Filter实现完全支持Servlet 3.1 签名。
+- 支持Portobuf 3.0
+- 支持JMS 2.0+和JPA 2.0+。
+- 引入了Spring Web Flow，这是一个用于替代Spring MVC的项目，构建在反应式基础之上，这异味着他完全是异步非阻塞的，主要用于事件循环执行模型，而非传统的每个请求执行模式都带有一个线程的最大线程池（基于Project Reactor构建）。
+- Web和核心模块适用于反应式编程模型。
+- Spring测试模块有了很大的改进。现在支持JUnit5，引入了新的注解来支持Jupiter编程和扩展模型，例如@SpringUnitConfig、@SpringJUnitWebConfig、@Enabledlf和Disabledlf
+- 支持在Spring TestContext Framework 中实现并行测试执行。
+
+## Spring 6.x
+
+- 整个代码库基于JDK17
+- Servlet，JPA等从javax迁移到Jakarta命名空间。
+- 运行时与Jakarta EE 9以及Jakarta EE 10 API的兼容性。
+- 与最新的Web服务器兼容：Tomcat 10.1，Jetty 11，Undertow 2.3，
+- 早期兼容虚拟线程（JDK19预览）。
+
+### 核心修改
+
+- 升级到ASM 9.4和Kotlin 1.7
+- 完整的CGLIB fork，支持捕获CGLIB生成的类。
+- 全面的向AOT（Ahead-Of-Time Porcessing，提前处理）转型。
+- 对GraalVM原生映像的一流支持。
+
+### 核心容器
+
+- 默认情况下，无需java.beans.Introspector来确定基本bean属性。
+- 在GenericApplicationContext (refreshForAotProcessing)中支持AOT处理。
+- 基于预解析构造函数和工厂方法的Bean定义转换。
+- 支持AOP代理和配置类的早期代理类确定。
+- PathMatchingResourcePatternResolver使用NIO和模块路径API进行扫描，分别支持GraalVM本机映像和Java模块路径中的类路径扫描。
+- DefaultFormattingConversionService支持基于ISO的默认Java.time类型解析。
+
+### 数据访问和事务
+
+- 支持预定JPA托管类型（用于包含AOT处理中）。
+- JPA支持Hibernate ORM 6.1 （保持与Hibernate ORM 5.6的兼容）。
+- 升级到R2DBC 1.0 （包括R2DBC事务定义）。
+- 删除JCA CCI支持。
+
+### Spring消息传递
+
+- 基于@RSocketExchange服务接口的RSocket接口客户端。
+- 基于Netty 5 Alpha的Reactor Netty 2的早期支持。
+- 支持Jakarta WebSocket 2.1以及其标准WebSocket协议升级机制。
+
+
+
+### 通用Web修订
+
+- 基于@HttpExchange服务接口的Http接口客户端。
+- 支持RFC 7807问题详细信息。
+- 统一HTTP状态码处理。
+- 支持Jackson 2.14
+- 与Servlet 6.0对齐（同时保留与Servlet 5.0的运行时兼容性）。
+
+### Spring MVC
+
+- 默认情况下使用PathPatternParser（能够选择进入PathMathcer）
+- 删除过时的Tiles和FreeMarker JSP支持。
+
+
+
+### Spring WebFlux
+
+- 新的PartEvent API 用于流式传输多部分表单上传（两者都在客户端和服务器）。
+- 新的ResponseEntityExceptionHandler用于自定义WebFlux异常并呈现RFC 7807错误响应。
+- 非流媒体类型的Flux返回值（写入前不再收集到List）。
+- 基于Netty 5 Alpha的Reactor Netty 2的早期支持。
+- JDK HttpClient与WebClient集成。
+
+### 可观察性
+
+- Micrometer Observation 直接可观察性在Spring框架中的部分应用。Spring-web模块现在需要io.micrometer:micrometer-observation:1.10+作为编译依赖项。
+- RestTemplate和WebClient被检测为生成HTTP客户端请求观察。
+- Spring MVC可以使用新的org.springframework.web.filter.ServerHttpObservationFilter检测HTTP服务器观察。
+- Spring WebFlux可以使用新的org.springframework.web.filter.reactive.ServerHttpObservationFilter检测HTTP服务器观察。
+- 对于Flux和Mono的Micrometer Context Propagation集成，从控制器方法返回值。
+
+
+
+### 测试
+
+- 支持在JVM或GraalVM本机映像中测试AOT处理的应用程序上下文。
+- 集成HtmlUnit 2.64+请求参数处理。
+- Servlet模拟（MockHttpServletRequest、MockHttpSession）现在基于Servlet API 6.0。
