@@ -1716,7 +1716,7 @@ Springboot-starter-web直接依赖了json，tomcat，springMVC等相关依赖，
 
 > spring的第一个版本于2002年10发布，由一个带有易于配置和使用的控制反转（IoC）容器的小型内核组成。多年来spring已经成为JavaEE的主要替代品，并且发展成一个由许多不同项目组成的成熟技术。
 
-## Spring 0.9
+Spring 0.9
 
 该框架第一个公开的版本，以Exper One-on-One：J2EE一书为基础，提供了bean配置基础、AOP支持、JDBC抽象框架、抽象事务支持等。该版本没有官方参考文档，但可以在SourceForge上找到现有的源代码和文档。
 
@@ -1847,8 +1847,26 @@ Construct（构造方法）-》@Autowired（依赖注入）-> @PostConstruct（�
 对于同一个类或者对象，增删改查操作，传统可能需要调用不同的接口，rest风格可以根据调用的请求类型（POST，GET，DELETE,PUT)来用同一个接口，直接完成上述的所有操作。
 
 - 新的MVC XML 名称空间和其他注解，例如Spring MVC中的@CookieValue和RequestHeaders。
+
+1. @CookieValue：
+
+   用来获取Cookie里的值
+
 - 验证增强功能和JSR-303（bean验证）支持。
 - 对JavaEE的早期支持，包括@Async @Asynchronous注解、JSR303、JSF2.0、JPA2.0等。
+
+### @Async
+
+被@Async 标记的方法为异步方法，会在调用方的当前线程之外的独立线程中执行。
+
+@Async 的使用条件：
+
+1. 一般用在类的方法上，如果用在类上，那这个类所有的方法都是异步执行的。
+2. 所使用的Async 注解方法的类对象，应该是Spring容器管理的bean对象。
+3. 调用异步方法类上要配置上注解@EnableAsync 
+
+
+
 - 支持嵌入式数据库、例如HSQL、H2和Derby。
 
 
@@ -1858,11 +1876,19 @@ Construct（构造方法）-》@Autowired（依赖注入）-> @PostConstruct（�
 该版本包含以下功能。
 
 - 新的缓冲对象。
+
 - 可以用XML定义bean定义配置文件，同时也支持@Profile注解。
+
+  @Profile:用来注释当前方法或者类是在什么环境下使用的注解
+
 - 针对统一属性的环境抽象。
+
 - 与常见Spring XML名称空间元素等价的注解，如@ComponentScan、@EnableTransationManagement、@EnableCaching、@EnableScheduling、@EnableAsync、@EnableAspectAutoProxy、@EnableLoadTimeWeaving和@EnableSpringConfigured。
+
 - 支持Hibernate 4.
+
 - Spring TestContext Framework对@Configuration类和bean定义配置文件的支持。
+
 - 名称空间c：简化了构造函数注入。
 
 ![2024-1-1715:05:02-1705475102295.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-1-1715:05:02-1705475102295.png)
@@ -1913,6 +1939,9 @@ Construct（构造方法）-》@Autowired（依赖注入）-> @PostConstruct（�
 该版本包含以下功能。
 
 - 核心改进（例如，引入@AliaFor，并修改现有注解以使用它）。
+
+@AliaFor用来表示当前注解修饰的属性的别名。
+
 - 全面支持Hiermate ORM 5.0.
 - JMS和Web改进。
 - 对WebSocket消息传递的改进。
