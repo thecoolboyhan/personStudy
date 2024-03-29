@@ -5,14 +5,27 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+
+class Solution {
+    public int firstDayBeenInAllRooms(int[] nextVisit) {
+        int mod=1000000007;
+        int[] dp=new int[nextVisit.length];
+        dp[0]=1;
+        for(int i=1;i<dp.length;i++){
+            int t=(2*dp[i-1]+1)%mod;
+            t=(t+mod-dp[nextVisit[i-1]]+1)%mod;
+            dp[i]=t;
+        }
+        return dp[dp.length-1]-1;
+    }
+}
 
 public class Demo {
 
     public static void main(String[] args) throws CloneNotSupportedException, InterruptedException, IOException {
         Solution solution = new Solution();
-        System.out.println(solution.minimumRemoval(new int[]{4, 1, 6, 5}));
+        System.out.println(solution.firstDayBeenInAllRooms(new int[]{0,0,2}));
     }
 
 
@@ -125,27 +138,6 @@ public class Demo {
     }
 }
 
-class Solution {
-    public long minimumRemoval(int[] beans) {
-        long sum=0;
-        for (int bean : beans) {
-            sum+=bean;
-        }
-        Arrays.sort(beans);
-        sum-=beans[beans.length-1];
-        long res=sum;
-        int p=beans[beans.length-1];
-        long x=0;
-        for(int i=2;i<=beans.length;i++){
-            long t=p-beans[beans.length-i];
-            t*=(i-1);
-            x+=t;
-            sum-=beans[beans.length-i];
-            res=Math.min(res,sum+x);
-            p=beans[beans.length-i];
-        }
-        return res;
-    }
-}
+
 
 
