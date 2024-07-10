@@ -1,5 +1,7 @@
 package com.代理.dongDJ.myJDKdong;
 
+import com.google.common.base.Utf8;
+
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
@@ -10,6 +12,8 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +35,8 @@ public class GPProxy {
             // TODO: 2022/2/8 把java文件输出到硬盘
             String filepath = GPProxy.class.getResource("").getPath();
             //这里是为了删除我的中文乱码
-            filepath="/home/rose/IdeaProjects/personStudy/spring/target/classes/com/代理/dongDJ/myJDKdong/";
+//            filepath="/home/rose/IdeaProjects/personStudy/spring/target/classes/com/代理/dongDJ/myJDKdong/";
+            filepath="C:\\Users\\tom\\IdeaProjects\\personStudy\\spring\\src\\main\\java\\com\\代理\\dongDJ\\myJDKdong\\";
             //先新建一个空文件
             File f = new File(filepath + "$Proxy0.java");
             FileWriter fw = new FileWriter(f);

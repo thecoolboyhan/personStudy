@@ -11,8 +11,9 @@ public class GPClassLoader extends ClassLoader {
     //存放需要加载  的文件
     private File classPathFile;
     public GPClassLoader(){
-//        String path = GPClassLoader.class.getResource("").getPath();
-        String path = "/home/rose/IdeaProjects/personStudy/spring/target/classes/com/代理/dongDJ/myJDKdong";
+        String path = GPClassLoader.class.getResource("").getPath();
+//        String path = "/home/rose/IdeaProjects/personStudy/spring/target/classes/com/代理/dongDJ/myJDKdong";
+        path="C:\\Users\\tom\\IdeaProjects\\personStudy\\spring\\src\\main\\java\\com\\代理\\dongDJ\\myJDKdong";
         //确定要新建文件的目录
         this.classPathFile=new File(path);
     }

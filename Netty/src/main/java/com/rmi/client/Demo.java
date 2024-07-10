@@ -3,29 +3,32 @@ package com.rmi.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.*;
 
 class Solution {
-    public int firstDayBeenInAllRooms(int[] nextVisit) {
-        int mod=1000000007;
-        int[] dp=new int[nextVisit.length];
-        dp[0]=1;
-        for(int i=1;i<dp.length;i++){
-            int t=(2*dp[i-1]+1)%mod;
-            t=(t+mod-dp[nextVisit[i-1]]+1)%mod;
-            dp[i]=t;
+    public int minimumRounds(int[] tasks) {
+        Map<Integer,Integer> map=new HashMap<>();
+        int res=0;
+        for(int num:tasks){
+            int t=map.getOrDefault(num,0);
+            t++;
+            map.put(num,t);
         }
-        return dp[dp.length-1]-1;
+        Set<Map.Entry<Integer, Integer>> entries = map.entrySet();
+        for (Map.Entry<Integer, Integer> entry : entries) {
+            int t=entry.getValue();
+            if(t==1) return -1;
+            res+=(t+2)/3;
+        }
+        return res;
     }
 }
 
 public class Demo {
 
-    public static void main(String[] args) throws CloneNotSupportedException, InterruptedException, IOException {
-        Solution solution = new Solution();
-        System.out.println(solution.firstDayBeenInAllRooms(new int[]{0,0,2}));
+    public static void main(String[] args) {
+
     }
 
 
@@ -137,7 +140,4 @@ public class Demo {
         }
     }
 }
-
-
-
 

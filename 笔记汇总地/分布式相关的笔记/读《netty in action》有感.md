@@ -1,3 +1,9 @@
+
+
+
+
+
+
 # Netty介绍
 
 ## 为什么使用netty
@@ -211,4 +217,109 @@ NIO2只支持JDK7之后的版本，而且不支持UDP协议。NIO2只为TCP量�
 
 
 netty 每个channel通过添加多个handler的方式，来控制channel的业务逻辑。每个handler最先被执行的是channelRead方法。
+
+
+
+
+
+# 读《Netty in action》有感
+
+
+
+
+
+# 第一部分、Netty的概念及体系结构
+
+## 第一章、Netty--异步和事件驱动
+
+
+
+### java早期BIO处理请求方式
+
+
+
+早期java阻塞函数处理请求的方式：
+
+```java
+public void execute(int port) throws IOException {
+//        创建一个新的ServerSocket,用来监听指定端口上的连接请求。
+        ServerSocket serverSocket = new ServerSocket(port);
+//        对accept()的调用将会被阻塞，直到一个连接建立。
+        Socket clientSocket = serverSocket.accept();
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(clientSocket.getInputStream()));
+        PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+        String request,response;
+        while((request=in.readLine())!=null){
+//            如果客户端传递了done表示处理结束，退出循环。
+            if("Done".equals(request)) break;
+//            处理被传递给服务器的处理方法
+//            response=processRequest(request);
+//            服务器给客户端响应处理结果
+            out.println(request);
+        }
+    }
+```
+
+![2024-7-1015:46:08-1720597567759.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-7-1015:46:08-1720597567759.png)
+
+
+
+上方代码只能同时处理一个连接，要管理多个并发客户端，需要为每个新的客户端Socket创建一个新的Thread。
+
+
+
+- 缺点：
+
+1. 大部分线程几乎都处于休眠状态。
+
+2. 创建的每个线程都需要创建一个栈，每个栈至少都要盛情默认空间的内存。
+3. 如果线程多，上下文切换成本高。
+
+
+
+### java NIO
+
+> new or Non-blocking
+>
+> NIO最开始是新的输入/输出（new Input/output)的英文缩写，但该API已经出现足够长的时间，不再是“新的”了，因此，如今大多数的用户认为NIO代表非阻塞I/O，而阻塞IO是旧的输入/输出。
+
+
+
+- NIO的两个优化
+
+1. 使用setsockopt()方法配置套接字，如果没有读写调用的时候就会立刻返回。
+2. 可以使用操作系统的时间通知API注册一组非阻塞套接字，以确定它们中是否有任何的套接字已经有数据可供读写。（IO多路复用）。
+
+![2024-7-1016:00:49-1720598448120.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-7-1016:00:49-1720598448120.png)
+
+java.nio.channels.Selector是java的非阻塞IO实现的关键。它使用了事件通知API（IO多路复用）以确认一组非阻塞套接字中有哪些已经就绪能够进行IO相关的操作。因此可以在任何的时间检查任意的读写操作的完成状态。所以可以实现一个线程处理多个并发的连接。
+
+
+
+- 优点：
+
+1. 使用较少的线程可以处理许多的连接，减少了内存管理和上下文切换带来的开销。
+2. 当没有IO操作需要处理的时候，线程也可以被用于其他任务。
+
+
+
+### Netty简介
+
+
+
+Netty的特性总结
+
+
+
+| 分类     | Netty的特性                                                  |
+| -------- | ------------------------------------------------------------ |
+| 设计     | 统一的API，支持多种传输类型，阻塞和非阻塞的 \n 简单而强大的线程模型 \n 真正的无连接数据报套接字支持 \n 链接逻辑组件以支持复用 |
+| 易于使用 | 详细的javadoc和大量的示例集 \n                               |
+| 性能     | 拥有比java的核心API更高的吞吐量以及更低的延迟\n 得益于池化和复用，拥有更低的资源消耗\n 更小的内存复制 |
+| 健壮性   | 不会因为慢速、快速或者超载的连接而导致OutOfMemoryError \n 消除在高速网络中NIO应用程序常见的不公平读写比率 |
+| 安全性   | 完整的SSL/TLS 以及StartTLS支持 \n 可用于受限制环境下         |
+| 社区驱动 | 发布快速而且频繁                                             |
+
+
 
