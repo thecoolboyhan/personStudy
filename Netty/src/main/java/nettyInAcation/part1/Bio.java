@@ -7,6 +7,9 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ * 演示一个java默认的BIO操作
+ */
 public class Bio {
     public void execute(int port) throws IOException {
 //        创建一个新的ServerSocket,用来监听指定端口上的连接请求。
