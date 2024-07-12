@@ -40,8 +40,12 @@ public class EchoClient {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        String host = "";
-        int port=10086;
+        if(args.length!=2){
+            System.out.println("输入的信息有误！");
+            return;
+        }
+        String host = args[0];
+        int port=Integer.parseInt(args[1]);
         new EchoClient(host,port).start();
     }
 

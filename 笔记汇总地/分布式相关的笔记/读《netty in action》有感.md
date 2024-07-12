@@ -640,3 +640,60 @@ public class EchoClient {
 3. 为服务器连接创建一个InetSocketAddress实例。
 4. 当连接被建立时，一个EchoClientHandler实例被安装到channelPipeline中。
 5. 在一切都设置完后，调用bootstrap。connect（）方法连接到远程节点、
+
+
+
+## 第三章、Netty的组件和设计
+
+
+
+### Channel、EventLoop和ChannelFuture
+
+
+
+Channel：socket
+
+EventLoop：控制流、多线程处理、并发；
+
+ChannelFuture：异步通知。
+
+
+
+- Channel接口
+
+用来处理socket连接
+
+
+
+- EventLoop接口
+
+
+
+![2024-7-1216:14:58-1720772097636.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-7-1216:14:58-1720772097636.png)
+
+
+
+1. 一个EventLoopGroup包含一个或者多个EventLoop
+2. 一个EventLoop在它的生命周期内只和一个Thread绑定
+3. 所有由EventLoop处理的IO事件都将在它专有的Thread上被处理
+4. 一个Channel在它的生命周期内只注册于一个EventLoop
+5. 一个EventLoop可能会被分配给一个或多个Channel
+
+
+
+> 一个给定的Channel的io操作都是由相同的Thread执行的，这样消除了对于同步的需要。
+
+
+
+- ChannelFuture接口
+
+一个操作可能不会立刻返回，ChannelFuture接口用来确认其结果。（无论成功还是失败）
+
+
+
+### ChannelHandler和ChannelPipeline
+
+
+
+- ChannelHandler接口
+
