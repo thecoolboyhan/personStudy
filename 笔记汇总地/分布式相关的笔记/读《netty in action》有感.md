@@ -697,3 +697,27 @@ ChannelFuture：异步通知。
 
 - ChannelHandler接口
 
+Netty的主要组件就是ChannelHandler，他是所有处理入站、出站数据的应用程序逻辑的容器。
+
+
+
+- ChannelPipeline接口
+
+ChannelPipeline提供了ChannelHandler链的容器，并定义了用于在该链上传播入站、出站事件流的API。当Channel被创建，它会自动被分配到它专属的ChannelPipeline。
+
+
+
+> ChannelHandler安装到ChannelPipeline的过程：
+
+
+
+1. 一个ChannelInitializer的实现被注册到ServerBootstrap中。
+2. 当ChannelInitializer.initChannel()方法被调用，ChannelInitializer将在ChannelPipeline中安装一组自定义的ChannelHandler；
+3. ChannelInitializer将它自己从ChannelPipeline中移除。
+
+![2024-7-1223:26:27-1720797986303.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-7-1223:26:27-1720797986303.png)
+
+
+
+- 编码器和解码器
+
