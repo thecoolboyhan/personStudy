@@ -721,3 +721,79 @@ ChannelPipeline提供了ChannelHandler链的容器，并定义了用于在该链
 
 - 编码器和解码器
 
+一般，入站数据会从字节转换为我们需要的编码，出站数据要从当前编码转换成字节。
+
+
+
+
+
+### 引导
+
+
+
+![2024-7-1617:32:17-1721122336933.png](https://gitee.com/grsswh/drawing-bed/raw/master/image/2024-7-1617:32:17-1721122336933.png)
+
+
+
+## 第四章、传输
+
+
+
+### 案例研究：传输迁移
+
+
+
+- 不通过Netty使用OIO和NIO
+
+```java
+public class PlainOioServer {
+    public void serve(int port) throws IOException{
+//        给服务器绑定指定端口
+        final ServerSocket socket=new ServerSocket(port);
+        try {
+            for (;;){
+//                接收连接
+                final Socket clientSocket=socket.accept();
+                System.out.println("Accepted conection from "+clientSocket);
+//                创建一个线程处理连接
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        OutputStream out;
+                        try {
+//                            给连接自己的客户端返回消息
+                            out=clientSocket.getOutputStream();
+                            out.write("Hi!\r\n".getBytes(
+                                    Charset.forName("UTF-8")));
+                            out.flush();
+//                            关闭连接
+                            clientSocket.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        finally{
+                            try {
+                                clientSocket.close();
+                            } catch (IOException e) {
+//                                关闭异常
+                            }
+                        }
+                    }
+//                    线程启动
+                }).start();
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+
+
+上方代码可以处理中等数量的并发客户端。但随着应用程序流行起来，它并不能很好的伸缩到支撑成千上万的并发连入连接。
+
+
+
+- 非阻塞版本
+
