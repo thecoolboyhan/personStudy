@@ -743,6 +743,10 @@ ChannelPipeline提供了ChannelHandler链的容器，并定义了用于在该链
 
 
 
+> 演示一次从阻塞OIO连接处理到非阻塞NIO迁移，java原生和Netty的迁移成本对比。
+
+
+
 - 不通过Netty使用OIO和NIO
 
 ```java
@@ -795,5 +799,205 @@ public class PlainOioServer {
 
 
 
-- 非阻塞版本
+- 基于java NIO的非阻塞版本
+
+```java
+public class PlainNioServer {
+    public void serve(int port) throws IOException {
+//        创建一个服务器Channel，
+        ServerSocketChannel serverChannel = ServerSocketChannel.open();
+//        设置当前Channel为非阻塞的
+        serverChannel.configureBlocking(false);
+//        获取当前Channel的socket对象
+        ServerSocket socket = serverChannel.socket();
+//        新建一个ip+端口的网络地址
+        InetSocketAddress address = new InetSocketAddress(port);
+//        把地址绑定到serverSocket对象上
+        socket.bind(address);
+//        打开selector：开始接收Channel中的事件
+        Selector selector = Selector.open();
+//        把serverSocket注册到selector上
+        serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        final ByteBuffer msg = ByteBuffer.wrap("Hi!\r\n".getBytes());
+        for (; ; ) {
+            try {
+//                开始接收时间，目前处于阻塞状态
+                selector.select();
+            } catch (IOException e) {
+                e.printStackTrace();
+                break;
+            }
+//            获取时间的选择key
+            Set<SelectionKey> readyKeys = selector.selectedKeys();
+//            开始遍历
+            Iterator<SelectionKey> iterator = readyKeys.iterator();
+            while (iterator.hasNext()){
+                SelectionKey key = iterator.next();
+//                开始处理当前上面的key，则删除此key（避免重复处理）
+                iterator.remove();
+                try {
+//                    判断是否就绪（可以被连接）
+                    if(key.isAcceptable()){
+//                        获取此key的Channel
+                        ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                        SocketChannel client = server.accept();
+                        client.configureBlocking(false);
+//                        把当前客户端Channel的读写事件监听注册到selector上
+                        client.register(selector,SelectionKey.OP_WRITE|
+                                SelectionKey.OP_READ,msg.duplicate());
+                        System.out.println("accepted connection from"+client);
+                    }
+//                    如果写事件就绪
+                    if(key.isWritable()){
+//                        获取当前客户端的Channel
+                        SocketChannel client=(SocketChannel) key.channel();
+//                        当前通道的缓存
+                        ByteBuffer buffer = (ByteBuffer) key.attachment();
+                        while(buffer.hasRemaining()){
+//                            把数据写到当前通道
+                            if(client.write(buffer)==0){
+                                break;
+                            }
+                        }
+//                        关闭连接
+                        client.close();
+                    }
+                } catch (IOException e) {
+                    key.cancel();
+                    try {
+                        key.channel().close();
+                    } catch (IOException ex) {
+                        System.out.println("关闭失败！");
+                        throw new RuntimeException(ex);
+                    }
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+}
+```
+
+
+
+- 使用Netty的阻塞网络编程
+
+
+
+```java
+/**
+ * Netty OIO演示
+ */
+public class NettyOioServer {
+    public void server(int port) throws InterruptedException {
+        final ByteBuf buf = Unpooled.unreleasableBuffer(
+                Unpooled.copiedBuffer("Hi!\r\t", StandardCharsets.UTF_8));
+//        新建一个事件处理Oio的线程组
+        EventLoopGroup group = new OioEventLoopGroup();
+        try {
+//            创建一个启动引导类
+            ServerBootstrap b = new ServerBootstrap();
+//            把OIO组绑定到当前引导类
+            b.group(group)
+//                    给事件组指定处理事件的Channel
+                    .channel(OioServerSocketChannel.class)
+//                    设计当前server的ip
+                    .localAddress(new InetSocketAddress(port))
+//                    指定Channel的处理方式,所有连接都会调用此方法
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) throws Exception {
+                            ch.pipeline().addLast(
+//                                    给当前处理链添加一个拦截处理器
+                                    new ChannelInboundHandlerAdapter(){
+//                                        处理器实现
+                                        @Override
+                                        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+//                                            把消息写给客户端
+                                            ctx.writeAndFlush(buf.duplicate())
+                                                    .addListener(
+//                                                            写完消息后,触发连接关闭事件
+                                                            ChannelFutureListener.CLOSE);
+                                        }
+                                    });
+                        }
+                    });
+//            绑定服务器来接收连接
+            ChannelFuture f = b.bind().sync();
+            f.channel().closeFuture().sync();
+        }finally {
+//            释放所有资源
+            group.shutdownGracefully().sync();
+        }
+    }
+}
+```
+
+
+
+- 基于Netty的异步网络处理
+
+```java
+/**
+ * 基于Netty的Nio网络连接
+ */
+public class NettyNioServer {
+    public void server(int port) throws InterruptedException {
+        final ByteBuf buf = Unpooled.unreleasableBuffer(
+                Unpooled.copiedBuffer("Hi!\r\t", StandardCharsets.UTF_8));
+//        新建一个事件处理Oio的线程组
+        NioEventLoopGroup group = new NioEventLoopGroup();
+        try {
+//            创建一个启动引导类
+            ServerBootstrap b = new ServerBootstrap();
+//            把OIO组绑定到当前引导类
+            b.group(group)
+//                    给事件组指定处理事件的Channel
+                    .channel(NioServerSocketChannel.class)
+//                    设计当前server的ip
+                    .localAddress(new InetSocketAddress(port))
+//                    指定Channel的处理方式,所有连接都会调用此方法
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) throws Exception {
+                            ch.pipeline().addLast(
+//                                    给当前处理链添加一个拦截处理器
+                                    new ChannelInboundHandlerAdapter(){
+                                        //                                        处理器实现
+                                        @Override
+                                        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+//                                            把消息写给客户端
+                                            ctx.writeAndFlush(buf.duplicate())
+                                                    .addListener(
+//                                                            写完消息后,触发连接关闭事件
+                                                            ChannelFutureListener.CLOSE);
+                                        }
+                                    });
+                        }
+                    });
+//            绑定服务器来接收连接
+            ChannelFuture f = b.bind().sync();
+            f.channel().closeFuture().sync();
+        }finally {
+//            释放所有资源
+            group.shutdownGracefully().sync();
+        }
+    }
+}
+```
+
+只修改了两行代码：
+
+1. 把事件处理的组从OioEventLoopGroup换成了NioEventLoopGroup。
+2. 把当前组绑定的时间处理Channel从OioServerSocketChannel.class换成NioServerSocketChannel.class
+
+其他无需修改。
+
+
+
+Netty每种传输的实现都暴露相同的API，所以无论选择哪种实现，其他代码几乎都不受影响。
+
+
+
+### 传输API
 

@@ -5,7 +5,11 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
+/**
+ * java原生的OIO连接网络处理
+ */
 public class PlainOioServer {
     public void serve(int port) throws IOException{
 //        给服务器绑定指定端口
@@ -24,7 +28,7 @@ public class PlainOioServer {
 //                            给连接自己的客户端返回消息
                             out=clientSocket.getOutputStream();
                             out.write("Hi!\r\n".getBytes(
-                                    Charset.forName("UTF-8")));
+                                    StandardCharsets.UTF_8));
                             out.flush();
 //                            关闭连接
                             clientSocket.close();
