@@ -1001,3 +1001,156 @@ Netty每种传输的实现都暴露相同的API，所以无论选择哪种实现
 
 ### 传输API
 
+传输api的核心是Channel接口，它被用于所有的IO操作。
+
+
+
+![17213748431541721374842200.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17213748431541721374842200.png)
+
+每个Channel都会分配一个ChannelPipeline和ChannelConfig。
+
+
+
+- ChannelConfig
+
+包含了该Channel的所有配置设置，并且支持热更新。
+
+
+
+- ChannelPipeline
+
+持有所有用于入站和出站数据以及事件的ChannelHandler实例。
+
+ChannelHandler实现了应用程序处理状态变化以及数据处理的逻辑。
+
+
+
+- ChannelHandler的用途：
+
+1. 将数据的一种格式转换成另一种格式
+2. 提供异常的通知
+3. 提供Channel变为活动或者非活动的通知
+4. 当Channel注册到EventLoop或者从EventLoop注销时的通知
+5. 用户自定义事件的通知。
+
+
+
+- Channel的几个重要方法
+
+
+
+| 方法名        | 描述                                                         |
+| ------------- | ------------------------------------------------------------ |
+| eventLoop     | 返回分配给Channel的EventLoop                                 |
+| Pipeline      | 返回分配给Channel的ChannelPipeline                           |
+| isActive      | 如果Channel是活动的，返回true。（一个socket传输一旦连接到了远程节点便是活动的，一个Datagram传输一旦被打开就是活动的） |
+| localAddress  | 返回本地socketAddress                                        |
+| remoteAddress | 返回远程socketAddress                                        |
+| write         | 把数据写到远程节点。这个数据将被传递给ChannelPipeline，并且排队直到它被冲刷 |
+| flush         | 将之前已写的数据冲刷到底层传输，如一个socket                 |
+| writeAndFlush | 先调用write然后调用flush                                     |
+
+
+
+```java
+//    写出数据到Channel
+    public void demo1(Channel channel){
+//        申请空间
+        ByteBuf buf = Unpooled.copiedBuffer("your data", CharsetUtil.UTF_8);
+//        写完数据并冲刷（提交）
+        ChannelFuture cf = channel.writeAndFlush(buf);
+//        添加ChannelFutureListener用来写完后接收通知
+        cf.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if(future.isSuccess())
+                    System.out.println("write successful");
+                else{
+                    System.err.println("write error");
+                    future.cause().printStackTrace();
+                }
+            }
+        });
+    }
+//    多个线程使用同一个Channel
+    public void demo2(Channel channel){
+        ByteBuf buf = Unpooled.copiedBuffer("your data", CharsetUtil.UTF_8);
+//        创建一个把数据写到Channel的runnable
+        Runnable write = new Runnable() {
+            @Override
+            public void run() {
+                channel.writeAndFlush(buf.duplicate());
+            }
+        };
+//        获取一个线程池
+        Executor executor= Executors.newCachedThreadPool();
+//        把任务提交给一个线程
+        executor.execute(write);
+//        把任务提交给另一个线程
+        executor.execute(write);
+    }
+```
+
+
+
+Netty的Channel是线程安全的，所以无论是提交给一个线程还是多个线程同时调用，都不会有问题。
+
+
+
+### 内置的传输
+
+
+
+- Netty所提供的传输
+
+
+
+| 名称     | 包                             | 描述                                                         |
+| -------- | ------------------------------ | ------------------------------------------------------------ |
+| NIO      | io.netty.channel.socket.nio    | 使用java.nio.channels包作为基础--基于选择器的方式            |
+| Epoll    | io.netty.channel.epoll         | 由JNI驱动的epoll和非阻塞IO。这个传输支持只有在linux上 可用的多种特性，如SO_REUSEPORT，比NIO传输更快，而且是完全非阻塞的 |
+| OIO      | io.netty.channel.oio（已弃用） | 使用java.net包作为基础--使用阻塞流                           |
+| local    | io.netty.channel.local         | 可以在VM内部通过管道进行通信的本地传输                       |
+| embedded | io.netty.channel.embedded      | 允许使用ChannelHandler而又不需要一个真正基于网络的传输。     |
+| kqueue   |                                |                                                              |
+
+
+
+- NIO----非阻塞IO
+
+NIO一个所有IO操作完全异步的实现。
+
+> 基于选择器的API
+
+选择器充当了一个注册表，在那里可以请求在Channel的状态发生变化时得到通知。
+
+1. 新的Channel已被接受并且就绪
+2. Channel连接已经完成
+3. Channel有已经就绪的可供读取的数据
+4. Channel可用于写数据
+
+
+
+> 选择操作的位模式
+
+| 名称       | 描述                                            |
+| ---------- | ----------------------------------------------- |
+| OP_ACCEPT  | 请求在接受新连接并创建Channel时获得通知         |
+| OP_CONNECT | 请求在建立一个连接时获得通知                    |
+| OP_READ    | 请求当数据已就绪，可以从Channel中读取时获得通知 |
+| OP_WRITE   | 请求当可以想Channel中写更多数据时获得通知。     |
+
+
+
+![17213824004291721382399481.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17213824004291721382399481.png)
+
+
+
+> 零拷贝（Zero-copy）
+
+目前只有在使用NIO和Epoll传输时才可使用的特性。可以快速高效地将数据从文件系统移动到网络接口，而不需要将其从内核空间复制到用户空间。在FTP或者HTTP这样的协议中可以显著地提高性能。（并不是所有操作系统都支持）
+
+> 零拷贝对于实现了数据加密或者压缩的文件系统是不可用的（只能传输文件的原始内容）
+
+
+
