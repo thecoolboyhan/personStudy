@@ -1154,3 +1154,92 @@ NIO一个所有IO操作完全异步的实现。
 
 
 
+- Epoll--用于Linux的本地非阻塞传输
+
+> Linux专属的NIO API，在高负载下它的性能要优于JDK的NIO实现。
+
+原理和图4-2完全相同。
+
+
+
+- OIO-旧的阻塞IO（已废弃）
+
+建立在java.net包的阻塞实现之上的，非异步。
+
+
+
+- 用于JVM内部通信的Local传输
+
+用于在同一个JVM中运行的客户端和服务器程序之间的异步通信。
+
+
+
+![17219082813701721908281040.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17219082813701721908281040.png)
+
+- Embedded传输
+
+Netty提供的额外的传输，可以将一组ChannelHandler作为帮助类嵌入到其他的ChannelHandler内部。
+
+
+
+### 传输的用例
+
+
+
+| 传输           | TCP  | UDP  | SCTP | UDT  |
+| -------------- | ---- | ---- | ---- | ---- |
+| NIO            | Y    | Y    | Y    | Y    |
+| Epoll(仅linux) | Y    | Y    | N    | N    |
+| OIO            | Y    | Y    | Y    | Y    |
+
+
+
+- 每种应用程序推荐的传输方式
+
+| 应用程序的需求                     | 推荐的传输                    |
+| ---------------------------------- | ----------------------------- |
+| 非阻塞代码库或者一个常规代码的起步 | NIO（或者在Linux上使用epoll） |
+| 阻塞代码库                         | OIO                           |
+| 同一个JVM内部                      | Local                         |
+| 测试ChannelHandler的实现           | Embedded                      |
+
+
+
+## 第五章、Bytebuf
+
+
+
+## ByteBuf的API
+
+
+
+- 优点
+
+1. 可以被用户自定义的缓冲区类型扩展
+2. 通过内置的复合缓冲区实现了透明的零拷贝
+3. 容量可以按需增长（类似于JDK的StringBuilder）
+4. 在读和写两种模式之间切换不需要调用bytebuffer的flip()方法
+5. 读和写使用了不同的索引
+6. 支持方法的链式调用
+7. 支持引用计数
+8. 支持池化
+
+
+
+## ByteBuf类--Netty的数据容器
+
+
+
+- 原理
+
+ByteBuf维护了两个不同的索引：一个用于读取，一个用于写入。
+
+当你从ByteBuf中读取时，它的readerIndex将会被递增已经被读取的字节数。
+
+当写入bytebuf时，它的writerIndex也会被递增。
+
+
+
+- 下标越界异常
+
+> 当你读取到“可以读取的”数据的末尾（读取指针等于当前写入指针的位置），如果仍试图读取超出该点的数据，会触发IndexOutOfBoundsException
