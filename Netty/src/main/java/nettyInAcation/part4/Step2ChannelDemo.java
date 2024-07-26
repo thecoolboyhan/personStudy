@@ -47,4 +47,17 @@ public class Step2ChannelDemo {
 //        把任务提交给另一个线程
         executor.execute(write);
     }
+
+    public void byteBufNum(ByteBuf buf){
+//        检测bytebuf是否存在支撑数组
+        if(buf.hasArray()){
+//            获取该支撑数组
+            byte[] array = buf.array();
+//            计算出当前的偏移量
+            int offset = buf.arrayOffset() + buf.readerIndex();
+//            获取可读的字节数
+            int len = buf.readableBytes();
+//            handleArray(array,offset,len);
+        }
+    }
 }
