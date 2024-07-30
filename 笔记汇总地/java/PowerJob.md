@@ -204,7 +204,7 @@ data：一个Long类型的appid（此appId是否是之前传的appName？）
 
 logQueue的消费过程中全程上锁。
 
-
+logqueue.poll()
 
 
 
