@@ -320,3 +320,14 @@ worker的启动类，此类初始化时，会将各种配置信息（config）
 
 
 ![1721887350228Powerjob-worker初始化对象.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/1721887350228Powerjob-worker%E5%88%9D%E5%A7%8B%E5%8C%96%E5%AF%B9%E8%B1%A1.png)
+
+
+
+
+
+# worker执行器
+
+
+
+# 广播
+

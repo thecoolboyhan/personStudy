@@ -1246,3 +1246,143 @@ ByteBuf维护了两个不同的索引：一个用于读取，一个用于写入�
 
 
 
+- 堆缓冲区（支撑数组backing array）
+
+> 将数据存储在JVM的堆内存中，可以在没有使用池化的情况下提供快速的分配和释放。
+
+
+
+``` java
+/**
+     * 堆缓冲区方式使用bytebuf。
+     * @param buf   缓冲区
+     */
+    public void byteBufNum(ByteBuf buf){
+//        检测bytebuf是否存在支撑数组
+        if(buf.hasArray()){
+//            获取该支撑数组
+            byte[] array = buf.array();
+//            计算出当前的偏移量
+            int offset = buf.arrayOffset() + buf.readerIndex();
+//            获取可读的字节数
+            int len = buf.readableBytes();
+//            handleArray(array,offset,len);
+        }
+    }
+```
+
+
+
+- 直接缓冲区
+
+> 通过直接内存来访问数据，由于缓冲区中的数据不是在JVM内部的所以不会自动垃圾回收。
+
+优点：
+
+理想的网络数据传输选择。传统堆中的缓冲区的数据，JVM在进行网络传输时，会先把堆中的数据复制到堆外，然后再发送。
+
+缺点：
+
+1. 由于数据在堆外，所以分配和释放空间都比较昂贵。
+2. 因为数据不在堆上，所以不得不进行一次复制。
+
+
+
+``` java
+/**
+     * 通过直接内存操作缓冲区
+     * @param directBuf 缓冲区
+     */
+    public  void byteBufDirect(ByteBuf directBuf){
+//        检测是否存在数组缓冲区，如果不则认为当前缓冲区是直接内存缓冲区
+        if(!directBuf.hasArray()){
+//            获取当前缓冲区的可读长度
+            int length = directBuf.readableBytes();
+//            分配字节数组来接收
+            byte[] array = new byte[length];
+//            从缓冲区读取数据到上方数组
+            directBuf.getBytes(directBuf.readerIndex(),array);
+//            handleArray(array,offset,len);
+        }
+    }
+```
+
+
+
+- 复合缓冲区
+
+> Netty通过一个byteBuf子类--CompositeByteBuf--实现了这个模式，它提供了一个将多个缓冲区表示为单个合并缓冲区的虚拟表示。
+
+![17223414940961722341493900.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17223414940961722341493900.png)
+
+将通常不会变动的数据存放到主体缓冲区，将经常变动的数据存放到头部缓冲区。
+
+多个头部缓冲区可以共享同一个主体缓冲区。
+
+将不同的主体和头部组合在一起，可以看做一个不同的缓冲区。
+
+> 这样操作可以避免没有必要的复制。（主体缓冲区始终只有一份）
+
+
+
+``` java
+/**
+     * 复合缓冲区
+     * @param headByteBuf 头缓冲区
+     * @param bodyBuf 主体缓冲区
+     */
+    public void ByteBufComposite(ByteBuf headByteBuf,ByteBuf bodyBuf){
+        CompositeByteBuf messageBuf = Unpooled.compositeBuffer();
+        messageBuf.addComponents(headByteBuf,bodyBuf);
+//        访问CompositeByteBuf中的数据
+        int length = messageBuf.readableBytes();
+//        创建一个用来存放复合缓冲区中数据的空间
+        byte[] array = new byte[length];
+//        将缓冲区中的数据复制到空间中
+        messageBuf.getBytes(messageBuf.readerIndex(), array);
+//        删除复合缓冲区中的第一个缓冲区
+        messageBuf.removeComponent(0);
+        for (ByteBuf buf : messageBuf) {
+            System.out.println(buf.toString());
+        }
+    }
+```
+
+
+
+## 字节级操作 ByteBuf相关的操作
+
+
+
+- 随机访问索引
+
+直接通过buffer.getByte(i)通过下标访问缓冲区中的数据
+
+这样不会改变readerIndex和writerIndex
+
+- 顺序访问
+
+![17223435050931722343504656.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17223435050931722343504656.png)
+
+- 可丢弃的字节
+
+通过调用discardReadBytes()方法来丢弃回收可丢弃的空间。
+
+被回收的空间会用来分配给可写空间中，但不是直接分配。而是会触发一个整理的过程。所有未读的空间整理到内存的头部，再移动可读和可写的下标。
+
+![17223437700931722343769639.png](https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17223437700931722343769639.png)
+
+> 会导致内存复制。
+
+
+
+- 可读字节
+
+可读字节中的内存存放了真正的数据。
+
+- 可写字节
+
+可写字节表示为被定义、或者写入就绪的内存区域。（这个区域中有可能有部分脏数据）
+
+
+
