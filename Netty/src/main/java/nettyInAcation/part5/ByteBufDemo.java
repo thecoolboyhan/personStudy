@@ -1,8 +1,11 @@
 package nettyInAcation.part5;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 
 public class ByteBufDemo {
     /**
@@ -59,4 +62,25 @@ public class ByteBufDemo {
             System.out.println(buf.toString());
         }
     }
+
+//    获取ByteBufAllocator对象
+    public void ByteBufAllocator(Channel channel, ChannelHandlerContext ctx){
+//        从Channel中获取ByteBufAllocator
+        ByteBufAllocator allocator = channel.alloc();
+//        从ChannelHandler中获取ByteBufAllocator
+        ByteBufAllocator allocator2 = ctx.alloc();
+    }
+
+//    释放ByteBuf的空间
+    public void ByteBufReferenceCounted(Channel channel){
+//        从Channel中获取池管理器
+        ByteBufAllocator allocator = channel.alloc();
+//        从池中获取ByteBuf对象
+        ByteBuf buffer = allocator.directBuffer();
+//        检查当前ByteBuf引用数是否为1
+        assert buffer.refCnt()==1;
+//        释放内存
+        boolean release = buffer.release();
+    }
+
 }
