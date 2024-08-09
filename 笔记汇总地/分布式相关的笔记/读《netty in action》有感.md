@@ -1655,3 +1655,128 @@ public class DemoChannelHandlerContext {
 
 
 
+### 异常处理
+
+
+
+> 入站异常
+
+- ChannelHandler..exceptionCaught()默认实现是将当前异常转发给ChannelPipeline中的下一个ChannelHandler
+- 如果异常到达了ChannelPipeline的尾端，它将会被记录为未被处理
+- 若想自定义异常处理，需要重写exceptionCaught()方法。然后决定是否将该异常传播出去
+
+```java
+//自定义处理入站异常
+public class P6InboundExceptionHandler extends ChannelInboundHandlerAdapter {
+//    重写exceptionCaught方法
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        cause.printStackTrace();
+        ctx.close();
+    }
+}
+```
+
+
+
+> 出站异常
+
+- 每个出站操作都将返回一个ChannelFuture。注册到ChannelFuture的ChannelFutureListener将在操作完成时被通知该操作是成功还是失败。
+- 几乎所有的ChannelOutboundHandler上的方法都会被传入一个ChannelPromise实例。作为ChannelFuture的子类，ChannelPromise也可以被分配用于异步通知的监听器。（也可以立即通知）
+
+
+
+```java
+//自定义出站规则异常处理
+public class P6OutboundExceptionHandler extends ChannelOutboundHandlerAdapter {
+//    将结果的监听器交给operationComplete
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        promise.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if(!future.isSuccess()){
+                    future.cause().printStackTrace();
+                    future.channel().close();
+                    future.channel().closeFuture();
+                }
+            }
+        });
+    }
+//    通过将监听器交给Future，两种方法效果相同
+    public void byChannelFuture(Channel channel){
+        ChannelFuture future = channel.write(new Object());
+        future.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if(!future.isSuccess()){
+                    future.cause().printStackTrace();
+                    future.channel().close();
+                    future.channel().closeFuture();
+                }
+            }
+        });
+    }
+}
+```
+
+
+
+
+
+## 第七章、EventLoop和线程模型
+
+
+
+- java5的线程池化技术
+
+<img src="https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17231877659461723187765894.png"  />
+
+
+
+- 存在的问题
+
+虽然可以重用线程，但是并不能消除由上下文切换带来的开销。性能影响将随着线程数量的增加变得明显，且在高负载下愈演愈烈。
+
+
+
+### EventLoop接口
+
+
+
+<img src="https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17231933815271723193380788.png"  />
+
+``` mermaid
+graph TD
+	a[io.netty.channel]
+	a1[ThreadPerChannelEventLoop]-->a2[SingleThreadEventLoop]
+	a2-->a3[EventLoop]
+	a3-->a4[EventLoopGroup]
+	b[io.netty.util.concurrent]
+	b1[SingleThreadEventExecutor]-->b2[AbstractEventExecutor]
+	b2-->b3[EventExecutor]
+	b3-->b4[EventExecutorGroup]
+	a2-->b1
+	a3-->b3
+	a4-->b4
+	c[java.util.concurrent]
+	b2-->c1[AbstractExecutorService]
+	b4-->c2[ScheduledExecutorService]
+	c1-->c3[ExecutorService]
+	c2-->c3
+	c3-->c4[Executor]
+```
+
+一个EventLoop将由一个永远不会改变的Thread驱动，同时任务（Runnable或者Callable）可以直接提交给EventLoop实现，以立即执行或者调度执行。
+
+
+
+- Netty4中的IO事件处理
+
+ I/O 操作触发的事件将流经安装了一个或者多个 ChannelHandler 的 ChannelPipeline。传播这些事件的方法调用可以随后被Channel-  Handler 所拦截，并且可以按需地处理事件。
+
+<img src="https://fastly.jsdelivr.net/gh/thecoolboyhan/th_blogs@main/image/17231187695351723118769210.png"  />
+
+- Netty3中的IO操作
+
+入站事件会在IO线程中执行，所有的出站事件由调用线程处理。
