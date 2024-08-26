@@ -1779,4 +1779,51 @@ graph TD
 
 - Netty3中的IO操作
 
-入站事件会在IO线程中执行，所有的出站事件由调用线程处理。
+入站事件会在IO线程中执行，所有的出站事件由调用线程处理。（需要额外的线程，导致上下文切换带来损耗）。
+
+
+
+### 任务调度
+
+
+
+- JDK的任务调度
+
+jdk提供了JUC包，可以定义一个任务调度线程池
+
+存在的弊端：需要多个线程，存在上下文切换问题
+
+```java
+//    jdk是如何做任务调度的
+    public void jdkC(){
+//        创建一个任务线程池
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(10);
+//        每60秒执行一次
+        executor.schedule(() -> System.out.println("60 seconds later"),60, TimeUnit.SECONDS);
+//        关闭线程池
+        executor.shutdown();
+    }
+```
+
+
+
+- EventLoop任务调度
+
+
+
+```java
+//    利用EventLoop停止一个任务
+    public void EventLoopC(Channel ch){
+//        通过EventLoop创建一个任务调度，60s后开始，每60s执行一次
+        ScheduledFuture<?> future = ch.eventLoop().scheduleAtFixedRate(() -> System.out.println("60s seconds later"), 60,60, TimeUnit.SECONDS);
+//        创建一个停止任务的表示
+        boolean mayInterruptIfRunning=false;
+//        取消任务
+        future.cancel(mayInterruptIfRunning);
+    }
+```
+
+
+
+- EventLoop的优势
+
