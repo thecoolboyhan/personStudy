@@ -1827,3 +1827,41 @@ jdk提供了JUC包，可以定义一个任务调度线程池
 
 - EventLoop的优势
 
+Netty的EventLoop扩展了ScheduledExecutorService，它实现了JDK可用的所有方法。
+
+
+
+### 实现细节
+
+- 线程管理
+
+Netty线程模型的卓越取决于对于当前Thread的确定。可以确定它是分配给当前Channel以及它的EventLoop的哪个线程。
+
+如果（当前）调用线程正是支撑EventLoop的线程，那么所提交的代码块将会被（直接）执行。否则EventLoop将调度该任务以便稍后执行，并将它放入到内部队列中。当EventLoop下次处理它的事件时，它会执行队列中的那些任务。
+
+
+
+![66f61fa9ee54e.png](https://www.helloimg.com/i/2024/09/27/66f61fa9ee54e.png)
+
+> 永远不要将一个长时间运行的任务放入到执行队列中，因为它将阻塞需要在同一线程上执行的任何其他任务。如果需要执行长时间运行的任务，建议新建一个专门的EventExecutor
+
+
+
+
+
+- EventLoop/线程的分配
+
+EventLoop包含在EventLoopGroup中，根据不同的传输实现，EventLoop的创建和分配方式不同。
+
+
+
+1. 异步传输
+
+
+
+![66f621bd511f9.png](https://www.helloimg.com/i/2024/09/27/66f621bd511f9.png)
+
+EventLoopGroup负责为每个新创建的Channel分配一个EventLoop。使用轮询的方式进行分配以获取一个均衡的分布，相同的EventLoop可能会被分配给多个Channel。
+
+一旦一个Channel被分配给了一个EventLoop，它将在它的整个生命周期中都使用这个EventLoop（以及相关的Thread）。
+
