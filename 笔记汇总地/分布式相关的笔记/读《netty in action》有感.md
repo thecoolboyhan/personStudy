@@ -230,7 +230,6 @@ netty 每个channel通过添加多个handler的方式，来控制channel的业�
 
 # 第一部分、Netty的概念及体系结构
 
-
 ## 第一章、Netty--异步和事件驱动
 
 
@@ -1934,6 +1933,29 @@ class ServerBootStrap extends AbstractBootStrap<ServerBootStrap, ServerChannel>{
 
 ![670a2cf5749e8.png](https://www.helloimg.com/i/2024/10/12/670a2cf5749e8.png)
 
+- bootstrap类
+
+> 用来引导客户端或者使用了无连接协议的应用程序中。
+
+主要API：
+
+| 名称                                                         | 描述                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Bootstrap group(EventLoopGroup)                              | 设置用于处理 Channel 所有事件的 EventLoopGroup               |
+| Bootstrap channel( Class) Bootstrap channelFactory( ChannelFactory<? extends C>) | channel()方法指定了Channel的实现类。如果该实现类 没提供默认的构造函数 ① ，可以通过调用channelFactory()方法来指定一个工厂类，它将会被bind()方 法调用 |
+| Bootstrap localAddress( SocketAddress)                       | 指定 Channel 应该绑定到的本地地址。如果没有指定， 则将由操作系统创建一个随机的地址。或者，也可以通过 bind()或者 connect()方法指定 localAddress |
+| Bootstrap option( ChannelOption option, T value)             | 设置 ChannelOption，其将被应用到每个新创建的 Channel 的 ChannelConfig。这些选项将会通过 bind()或者 connect()方法设置到 Channel，不管哪 个先被调用。这个方法在 Channel 已经被创建后再调用 将不会有任何的效果。支持的 ChannelOption 取决于 使用的 Channel 类型。 |
+| Bootstrap attr( Attribute key, T value)                      | 指定新创建的 Channel 的属性值。这些属性值是通过 bind()或者 connect()方法设置到 Channel 的，具体 取决于谁最先被调用。这个方法在 Channel 被创建后将 不会有任何的效果。 |
+| Bootstrap  handler(ChannelHandler)                           | 设置将被添加到 ChannelPipeline 以接收事件通知的 ChannelHandler |
+| Bootstrap clone()                                            | 创建一个当前 Bootstrap 的克隆，其具有和原始的 Bootstrap 相同的设置信息 |
+| Bootstrap remoteAddress( SocketAddress)                      | 设置远程地址。或者，也可以通过 connect()方法来指 定它        |
+| ChannelFuture connect()                                      | 连接到远程节点并返回一个 ChannelFuture，其将 会在 连接操作完成后接收到通知 |
+| ChannelFuture bind()                                         | 绑定 Channel 并返回一个 ChannelFuture，其将会在绑 定操作完成后接收到通知，在那之后必须调用 Channel. connect()方法来建立连接 |
+
+
+
+
+
 ```java
 //        新建一个bootstrap来创建和连接新的客户端的Channel
         Bootstrap bootstrap = new Bootstrap();
@@ -1965,6 +1987,173 @@ class ServerBootStrap extends AbstractBootStrap<ServerBootStrap, ServerChannel>{
             }
         });
 ```
+
+
+
+###  引导服务器
+
+Severbootstrap用来引导服务器。
+
+| 名称           | 描述                                                         |
+| -------------- | ------------------------------------------------------------ |
+| group          | 设置 ServerBootstrap 要用的 EventLoopGroup。这个 EventLoopGroup 将用于 ServerChannel 和被接受的子 Channel 的 I/O 处理 |
+| channel        | 设置将要被实例化的 ServerChannel 类                          |
+| channelFactory | 如果不能通过默认的构造函数 ①创建Channel，那么可以提供一个ChannelFactory |
+| localAddress   | 指定 ServerChannel 应该绑定到的本地地址。如果没有指定，则将由操作系 统使用一个随机地址。或者，可以通过 bind()方法来指定该 localAddress |
+| option         | 指定要应用到新创建的 ServerChannel 的 ChannelConfig 的 ChannelOption。这些选项将会通过 bind()方法设置到 Channel。在 bind()方法 被调用之后，设置或者改变 ChannelOption 都不会有任何的效果。所支持 的 ChannelOption 取决于所使用的 Channel 类型。参见正在使用的 ChannelConfig 的 API 文档 |
+| childOption    | 指定当子 Channel 被接受时，应用到子 Channel 的 ChannelConfig 的 ChannelOption。所支持的 ChannelOption 取决于所使用的 Channel 的类 型。参见正在使用的 ChannelConfig 的 API 文档 |
+| attr           | 指定 ServerChannel 上的属性，属性将会通过 bind()方法设置给 Channel。 在调用 bind()方法之后改变它们将不会有任何的效果 |
+| childAttr      | 将属性设置给已经被接受的子 Channel。接下来的调用将不会有任何的效果 |
+| handler        | 设置被添加到ServerChannel 的ChannelPipeline中的ChannelHandler。 更加常用的方法参见 childHandler() |
+| childHandler   | 设置将被添加到已被接受的子 Channel 的 ChannelPipeline 中的 ChannelHandler。handler()方法和 childHandler()方法之间的区别是：前者所 添加的 ChannelHandler 由接受子 Channel 的 ServerChannel 处理，而 childHandler()方法所添加的 ChannelHandler 将由已被接受的子 Channel 处理，其代表一个绑定到远程节点的套接字 |
+| clone          | 克隆一个设置和原始的 ServerBootstrap 相同的 ServerBootstrap  |
+| bind           | 绑定 ServerChannel 并且返回一个 ChannelFuture，其将会在绑定操作完成后收到通知（带着成功或者失败的结果） |
+
+
+
+![670f2c18d8551.png](https://www.helloimg.com/i/2024/10/16/670f2c18d8551.png)
+
+
+
+
+
+```java
+public class BootStrapSever {
+    public void run(){
+//        创建Server端线程池
+        NioEventLoopGroup group = new NioEventLoopGroup();
+//        创建引导类
+        ServerBootstrap bootstrap = new ServerBootstrap();
+//        把线程池赋值给Server引导
+        bootstrap.group(group)
+//指定当前EventLoop的Channel
+                .channel(NioServerSocketChannel.class)
+//                每当Channel时间触发时，会新创建的子Channel
+                .childHandler(new SimpleChannelInboundHandler<ByteBuf>() {
+//                    子Channel的连接事件
+                    @Override
+                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+                        System.out.println("Received  Data");
+                    }
+                });
+//        绑定服务器
+        ChannelFuture future = bootstrap.bind(new InetSocketAddress(8080));
+//        添加Channel完成的回调
+        future.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if(future.isSuccess()){
+                    System.out.println("Server bound");
+                }else{
+                    System.out.println("Bound attempt failed");
+                    future.cause().printStackTrace();
+                }
+            }
+        });
+    }
+}
+```
+
+
+
+### 从Channel引导客户端
+
+多个Channel之间共享同一个EventLoop
+
+![670f6d0cbd9d0.png](https://www.helloimg.com/i/2024/10/16/670f6d0cbd9d0.png)
+
+```java
+//共享EventLoop
+public class ShareEventLoop {
+    public void run(){
+//        新建一个Server端引导
+        ServerBootstrap bootstrap = new ServerBootstrap();
+//        指定两个线程池
+        bootstrap.group(new NioEventLoopGroup(),new NioEventLoopGroup())
+//                指定处理的Channel
+                .channel(NioServerSocketChannel.class)
+//                当上述Channel触发时指定子事件
+                .childHandler(
+                        new SimpleChannelInboundHandler<ByteBuf>() {
+                            ChannelFuture connectFuture;
+//                            当连接成功后，触发此事件
+                            @Override
+                            public void channelActive(ChannelHandlerContext ctx) throws Exception {
+//                                创建一个引导来连接远程服务器
+                                Bootstrap bootstrap1 = new Bootstrap();
+//                                给引导指定Channel
+                                bootstrap1.channel(NioSocketChannel.class)
+//                                        处理入站事件
+                                        .handler(
+                                                new SimpleChannelInboundHandler<ByteBuf>() {
+                                                    @Override
+                                                    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+                                                        System.out.println("Received data");
+                                                    }
+                                                }
+                                        );
+//                                给当前Channel指定为上次的childGroup
+                                bootstrap1.group(ctx.channel().eventLoop());
+//                                连接远程服务器
+                                connectFuture= bootstrap1.connect(new InetSocketAddress("www.baidu.com", 80));
+                            }
+//                            接收数据事件
+                            @Override
+                            protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
+                                if(connectFuture.isDone()) System.out.println("11");
+                            }
+                        }
+                );
+//        给服务器绑定端口号
+        ChannelFuture future = bootstrap.bind(new InetSocketAddress(8080));
+//        添加连接后的回调
+        future.addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if(future.isSuccess()) System.out.println("Server bound");
+                else {
+                    System.out.println("Bind attempt failed");
+                    future.cause().printStackTrace();
+                }
+            }
+        });
+    }
+}
+```
+
+
+
+> 尽可能地重用EventLoop，以减少线程创建所带来的开销
+
+
+
+### 在引导过程中添加多个ChannelHandler
+
+
+
+```java
+public class BootWithChannelInitializer {
+    public  void run() throws InterruptedException {
+        ServerBootstrap bootstrap = new ServerBootstrap();
+        bootstrap.group(new NioEventLoopGroup(),new NioEventLoopGroup())
+                .channel(NioServerSocketChannel.class)
+//                给Channel绑定多个事件
+                .childHandler(new ChannelInitializerImpl());
+        ChannelFuture future = bootstrap.bind(new InetSocketAddress(8080));
+        future.sync();
+    }
+    final class ChannelInitializerImpl extends ChannelInitializer<Channel>{
+        @Override
+        protected void initChannel(Channel ch) throws Exception {
+            ChannelPipeline pipeline = ch.pipeline();
+            pipeline.addLast(new HttpClientCodec());
+            pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+        }
+    }
+}
+```
+
+
 
 
 
