@@ -1225,6 +1225,10 @@ Netty提供的额外的传输，可以将一组ChannelHandler作为帮助类嵌�
 
 
 
+
+
+
+
 ### ByteBuf类--Netty的数据容器
 
 
@@ -2171,3 +2175,234 @@ public class BootWithChannelInitializer {
 
 
 
+
+
+## 第九章、单元测试
+
+
+
+### EmbeddedChannel
+
+> Netty提供的专门用来测试channelhandler的Channel，可以让测试代码在正常运行的环境之外被执行。
+
+- 原理
+
+将入站数据或者出站数据写入到EmbeddedChannel中，然后检查是否有任何东西到达了ChannelPipeline的尾端。以此来确认消息是否已经被编码或者被解码了，以及是否触发了任何的ChannelHandler动作。
+
+
+
+![671865a077e98.png](https://www.helloimg.com/i/2024/10/23/671865a077e98.png)
+
+
+
+- 测试入站
+
+解码的代码：
+
+```java
+//处理入站字节，解码
+public class FixedLengthFrameDecoder extends ByteToMessageDecoder {
+// 每次读取的长度（每帧的大小）
+    private final int frameLength;
+    public FixedLengthFrameDecoder(int frameLength) {
+        if(frameLength<=0) throw new RuntimeException("大小有误");
+        this.frameLength = frameLength;
+    }
+
+//    解码
+    @Override
+    protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) throws Exception {
+//        检查字节是否够一帧
+        while (byteBuf.readableBytes()>=frameLength){
+//            读取一帧
+            ByteBuf buf = byteBuf.readBytes(frameLength);
+//            已解码的队列
+            list.add(buf);
+        }
+    }
+}
+```
+
+两个测试方法：
+
+```java
+public class FixedLengthFrameDecoderTest {
+
+    @Test
+    public void testFramesDecoded(){
+//        申请缓存空间，写入9个字节
+        ByteBuf buf = Unpooled.buffer();
+        for (int i = 0; i < 9; i++) {
+            buf.writeByte(i);
+        }
+        ByteBuf input = buf.duplicate();
+//        创建一个测试Channel测试FixedLengthFrameDecoder效果，每次写入三个字节
+        EmbeddedChannel channel = new EmbeddedChannel(
+                new FixedLengthFrameDecoder(3)
+        );
+//        向测试Channel中写入三个字节的数据
+        assertTrue(channel.writeInbound(input.retain()));
+//        判断神抽写入成功
+        assertTrue(channel.finish());
+//        从Channel中读取数据
+        ByteBuf read = channel.readInbound();
+//       判断写入数据是否相同，下同
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+
+        read = channel.readInbound();
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+
+        read = channel.readInbound();
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+
+        assertNull(channel.readInbound());
+        buf.release();
+    }
+
+    @Test
+    public void testFramesDecoded2(){
+//        写入9个字节
+        ByteBuf buf = Unpooled.buffer();
+        for(int i=0;i<9;i++){
+            buf.writeByte(i);
+        }
+        ByteBuf input = buf.duplicate();
+        EmbeddedChannel channel = new EmbeddedChannel(new FixedLengthFrameDecoder(3));
+        assertFalse(channel.writeInbound(input.readBytes(2)));
+        assertTrue(channel.writeInbound(input.readBytes(7)));
+        assertTrue(channel.finish());
+        ByteBuf read = channel.readInbound();
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+        read = channel.readInbound();
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+        read = channel.readInbound();
+        assertEquals(buf.readSlice(3),read);
+        read.release();
+        assertNull(channel.readInbound());
+        buf.release();
+    }
+}
+```
+
+
+
+
+
+# 第二部分 编解码器
+
+
+
+## 第10章、编解码框架
+
+
+
+### 什么是编解码器？
+
+
+
+- 编码器：将消息转换为适合传输的格式（一般是字节流），编码器操作出站数据。
+- 解码器：将网络字节流转换回应用程序的消息格式，解码器处理入站数据。
+
+
+
+### 解码器
+
+每当需要为ChannelPipeline中的下一个ChannelInboundHandler转换入站数据时会用到。
+
+- ByteToMessageDecoder
+
+由于无法知道远程节点是否会一次性地发送一个完整的消息，所以这个类会对入站数据进行缓冲，直到它准备好。
+
+| 方法                                                         | 描述                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| decode(ChannelHandlerContext ctx,ByteBuf in,List<Object> out) | 必须要实现的抽象方法，被调用时会传输一个包含了传入数据的bytebuf，以及一个用来添加解码消息的List。对这个方法的调用将会重复进行，直到确定没有新的元素被添加到list中，或者该bytebuf中没有更多可读取的字节。<br/>如果该list不为空，则它的内容会被传递给下一个ChannelInboundHandler |
+| decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) | 当Channel的状态变成非活动时，这个方法会被调用一次。          |
+
+
+
+- 示例
+
+![671b3dddbdd54.png](https://www.helloimg.com/i/2024/10/25/671b3dddbdd54.png)
+
+```java
+//继承ByteToMessageDecoder类，创建变成一个新的子解码器
+public class ToIntegerDecoder extends ByteToMessageDecoder {
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+//        判断当前缓冲区中数据是否大于等于4字节
+        if(in.readableBytes()>=4){
+//            超过4字节，读取一个Integer格式的数据
+            out.add(in.readInt());
+        }
+    }
+}
+```
+
+
+
+- ReplayingDecoder
+
+> ReplayingDecoder扩展了ByteToMessageDecoder类，可以让使用者不必调用readableBytes()方法。ReplayingDecoder内部有一个自定义的Bytebuf实现，会自动调用readableBytes（）方法。
+
+
+
+```java
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        /**
+         * 内部的readInt方法增加了校验逻辑
+         *     @Override
+         *     public int readInt() {
+         *         checkReadableBytes(4);
+         *         return buffer.readInt();
+         *     }
+         */
+        out.add(in.readInt());
+    }
+}
+```
+
+
+
+- 抽象类 MessageToMessageDecoder
+
+![671b5370a3304.png](https://www.helloimg.com/i/2024/10/25/671b5370a3304.png)
+
+```java
+public class IntegerToStringDecoder extends MessageToMessageDecoder<Integer> {
+
+    @Override
+    protected void decode(ChannelHandlerContext ctx, Integer msg, List<Object> out) throws Exception {
+        out.add(String.valueOf(msg));
+    }
+}
+```
+
+
+
+- TooLongFrameException类
+
+> 由于Netty是一个异步框架，所以需要在字节可以解码之前在内存中缓冲它们。因此，不能让解码器缓冲大量的数据以至于耗尽可用的内存。因此有了TooLongFrameException类，会在解码器帧超出指定的大小限制时抛出。
+
+
+
+```java
+public class SafeByteToMessageDecoder extends ByteToMessageDecoder {
+    private static final int MAX_FRAME_SIZE=1024;
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        int readable=in.readableBytes();
+        if(readable>MAX_FRAME_SIZE){
+            in.skipBytes(readable);
+            throw new TooLongFrameException("Frame too big!");
+        }
+//        ...
+    }
+}
+```

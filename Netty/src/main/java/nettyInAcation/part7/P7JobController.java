@@ -16,8 +16,6 @@ public class P7JobController {
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(10);
 //        每60秒执行一次
             executor.schedule(() -> System.out.println("60 seconds later"), 60, TimeUnit.SECONDS);
-//        关闭线程池
-            executor.close();
 
     }
 //    利用EventLoop停止一个任务
