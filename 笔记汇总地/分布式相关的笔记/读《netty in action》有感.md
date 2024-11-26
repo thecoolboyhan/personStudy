@@ -2406,3 +2406,41 @@ public class SafeByteToMessageDecoder extends ByteToMessageDecoder {
     }
 }
 ```
+
+
+
+## 第11章、预置的ChannelHandler和编解码器
+
+
+
+### 通过SSL/TLS保护Netty应用程序
+
+
+
+[![1732503052734.png](https://www.helloimg.com/i/2024/11/25/6743e4f1e939d.png)](https://www.helloimg.com/i/2024/11/25/6743e4f1e939d.png)
+
+
+
+```java
+public class SslChannelInitializer extends ChannelInitializer<Channel> {
+    private final SslContext context;
+    private final boolean startTls;
+    
+    public SslChannelInitializer(SslContext context,boolean startTls){
+        this.context=context;
+        this.startTls=startTls;
+    }
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        SSLEngine engine = context.newEngine(ch.alloc());
+        ch.pipeline().addFirst("ssl",new SslHandler(engine,startTls));
+    }
+}
+```
+
+
+
+> 一般情况下，SslHandler是ChannelPipeline中的第一个ChannelHandler。这样保证了所有其他的Handler将它们的逻辑应用到数据后，才会进行加密。
+
+
+

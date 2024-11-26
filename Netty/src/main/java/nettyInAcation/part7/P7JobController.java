@@ -30,7 +30,7 @@ public class P7JobController {
 
 
     public static void main(String[] args) {
-        List<Long> res = List.of(1L, 2L, 3L);
-        System.out.println(Arrays.toString(res.toArray()));
+        char a='!';
+        boolean b=a=='=';
     }
 }
