@@ -2444,3 +2444,247 @@ public class SslChannelInitializer extends ChannelInitializer<Channel> {
 
 
 
+### 构建基于Netty的HTTP/HTTPS应用程序
+
+
+
+- 一个HTTP的组成
+
+[![1732774612341.png](https://www.helloimg.com/i/2024/11/28/674809a04f742.png)](https://www.helloimg.com/i/2024/11/28/674809a04f742.png)
+
+
+
+- 普通初始化处理http
+
+```java
+public class HttpPipelineInitializer extends ChannelInitializer<Channel> {
+    private final boolean client;
+    public HttpPipelineInitializer(boolean client) {
+        this.client=client;
+    }
+    @Override
+    protected void initChannel(Channel channel) throws Exception {
+        ChannelPipeline pipeline = channel.pipeline();
+        if(client){
+            pipeline.addLast("decoder",new HttpResponseDecoder());
+            pipeline.addLast("encoder",new HttpRequestEncoder());
+        }else{
+            pipeline.addLast("decoder",new HttpRequestDecoder());
+            pipeline.addLast("encoder",new HttpResponseEncoder());
+        }
+    }
+}
+```
+
+
+
+- 将http的多个部分组合在一起
+
+```java
+public class HttpAggregatorInitializer extends ChannelInitializer<Channel> {
+    private final boolean isClient;
+    public HttpAggregatorInitializer(boolean isClient) {
+        this.isClient = isClient;
+    }
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        if (isClient) {
+            pipeline.addLast("codec", new HttpClientCodec());
+        } else {
+            pipeline.addLast("codec", new HttpServerCodec());
+        }
+//        消息最大的容量为512k
+        pipeline.addLast("aggregator",
+                new HttpObjectAggregator(512 * 1024));
+    }
+}
+```
+
+
+
+- 压缩http消息
+
+```java
+public class HttpCompressionInitializer extends ChannelInitializer<Channel> {
+    private final boolean isClient;
+    public HttpCompressionInitializer(boolean isClient) {
+        this.isClient = isClient;
+    }
+    @Override
+    protected void initChannel(Channel channel) throws Exception {
+        ChannelPipeline pipeline = channel.pipeline();
+        if (isClient) {
+            pipeline.addLast("codec", new HttpClientCodec());
+            pipeline.addLast("decompressor",
+                    new HttpContentDecompressor());
+        } else {
+            pipeline.addLast("codec", new HttpServerCodec());
+            pipeline.addLast("compressor",
+                    new HttpContentCompressor());
+        }
+    }
+}
+```
+
+
+
+- WebSocket
+
+> 一种在2011年被互联网工程组（IETF）标准化的协议
+
+WebSocket解决了一个长期存在的问题：http是请求/响应模式的交互序列，那么如何实时的发布信息呢？
+
+WebSocket提供了，在一个单个的TCP连接上提供双向的通信。WebSocket在客户端和服务器之间提供了真正的双向数据交换。
+
+
+
+[![1732777926733.png](https://www.helloimg.com/i/2024/11/28/674816917ef5f.png)](https://www.helloimg.com/i/2024/11/28/674816917ef5f.png)
+
+- 服务器支持WebSocket
+
+```java
+public class WebSocketServerInitializer extends ChannelInitializer<Channel> {
+    @Override
+    protected void initChannel(Channel channel) throws Exception {
+        channel.pipeline().addLast(
+                new HttpServerCodec(),
+                new HttpObjectAggregator(65536),
+//                如果请求的为/websocket则升级握手
+                new WebSocketServerProtocolHandler("/websocket"),
+                new TextFrameHandler(),
+                new BinaryFrameHandler(),
+                new ContinuationFrameHandler()
+        );
+    }
+    public static final class TextFrameHandler extends SimpleChannelInboundHandler<TextWebSocketFrame> {
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, TextWebSocketFrame textWebSocketFrame) throws Exception {
+            
+        }
+    }
+    public static final class BinaryFrameHandler extends SimpleChannelInboundHandler<BinaryWebSocketFrame> {
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, BinaryWebSocketFrame binaryWebSocketFrame) throws Exception {
+            
+        }
+    }
+    public static final class ContinuationFrameHandler extends SimpleChannelInboundHandler<ContinuationWebSocketFrame> {
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, ContinuationWebSocketFrame continuationWebSocketFrame) throws Exception {
+            
+        }
+    }
+}
+```
+
+
+
+### 空闲的连接和超时
+
+> 如果在60s内没有接收或者发送任何的数据，将发送通知，如果没有响应，则关闭连接。
+
+- 发送心跳
+
+```java
+public class IdleStateHandlerInitializer extends ChannelInitializer<Channel> {
+    @Override
+    protected void initChannel(Channel channel) throws Exception {
+        ChannelPipeline pipeline = channel.pipeline();
+        pipeline.addLast(new IdleStateHandler(0,0,60, TimeUnit.SECONDS));
+        pipeline.addLast(new HeartBeatHandler());
+    }
+
+    public static final class HeartBeatHandler extends ChannelInboundHandlerAdapter {
+        //心跳消息
+        private static final ByteBuf HEARTBEAT_SEQUENCE =
+                Unpooled.unreleasableBuffer(Unpooled.copiedBuffer(
+                        "HEARTBEAT", CharsetUtil.ISO_8859_1));
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+//           如果发送失败就关闭该连接
+            if (evt instanceof IdleStateEvent) {
+                ctx.writeAndFlush(HEARTBEAT_SEQUENCE.duplicate()).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+            }else{
+                super.userEventTriggered(ctx, evt);
+            }
+        }
+    }
+}
+```
+
+
+
+### 基于分隔符和基于长度解码
+
+
+
+- 基于分隔符解码
+
+[![1732779044638.png](https://www.helloimg.com/i/2024/11/28/67481aeddd3f5.png)](https://www.helloimg.com/i/2024/11/28/67481aeddd3f5.png)
+
+
+
+```java
+public class LineBasedHandlerInitializer extends ChannelInitializer<SocketChannel> {
+    @Override
+    protected void initChannel(SocketChannel socketChannel) throws Exception {
+        ChannelPipeline pipeline = socketChannel.pipeline();
+//        自动通过换行符来转换帧
+        pipeline.addLast(new LineBasedFrameDecoder(64*1024));
+        pipeline.addLast(new FrameHandler());
+    }
+    
+    public static final class FrameHandler extends SimpleChannelInboundHandler<ByteBuf> {
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+            
+        }
+    }
+}
+```
+
+
+
+- 基于长度的协议
+
+[![1732780195127.png](https://www.helloimg.com/i/2024/11/28/67481f6c7ae0c.png)](https://www.helloimg.com/i/2024/11/28/67481f6c7ae0c.png)
+
+```java
+public class LengthBasedInitializer extends ChannelInitializer<Channel> {
+    @Override
+    protected void initChannel(Channel channel) throws Exception {
+        ChannelPipeline pipeline = channel.pipeline();
+        pipeline.addLast(
+                new LengthFieldBasedFrameDecoder(64 * 1024, 0, 8));
+        pipeline.addLast(new LineBasedHandlerInitializer.FrameHandler());
+    }
+
+    public static final class FrameHandler extends SimpleChannelInboundHandler<ByteBuf>{
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+            
+        }
+    }
+}
+```
+
+
+
+### 写大型数据
+
+> 写操作是非阻塞的，所以即使没有写出所有数据，写操作也会在完成时返回并通知channelFuture。当这种情况发生时，如果仍然还在不停地写入，就有可能会导致内存耗尽。
+
+在写入大型数据时，需要考虑远程节点的连接是慢速连接的情况，这种情况会导致内存释放的延迟。
+
+
+
+- 使用 **FileRegion**传输文件的内容
+
+> 通过支持零拷贝的文件传输channel来发送的文件区域
+
+
+
