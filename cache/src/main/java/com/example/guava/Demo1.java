@@ -80,14 +80,14 @@ public class Demo1 {
         //显示缓存中的数据
         disPlay(cache);
         //读取一次1，刷新1的过期情况
-//        System.out.println(cache.getIfPresent("1"));
+        System.out.println(cache.getIfPresent("1"));
 
         get(4+"",cache);
         Thread.sleep(3100);
         System.out.println("======================");
         disPlay(cache);
         //cache统计
-//        System.out.println(cache.stats());
+        System.out.println(cache.stats());
     }
 
     public static void disPlay(LoadingCache<String,Object> cache){
