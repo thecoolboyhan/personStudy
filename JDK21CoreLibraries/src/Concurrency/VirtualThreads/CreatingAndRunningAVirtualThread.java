@@ -2,10 +2,12 @@ package Concurrency.VirtualThreads;
 
 import org.w3c.dom.ls.LSOutput;
 
+import java.util.concurrent.*;
+
 public class CreatingAndRunningAVirtualThread {
 
     public static void main(String[] args) throws InterruptedException {
-        createByThreadBuilder2();
+        createByExecutors();
     }
 
     private static void createByThreadClass() throws InterruptedException {
@@ -64,5 +66,22 @@ public class CreatingAndRunningAVirtualThread {
         Thread t2 = builder.start(task);
         t2.join();
         System.out.println(t2.getName()+" terminated");
+    }
+
+    /**
+     * try (ExecutorService myExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+     *     Future<?> future = myExecutor.submit(() -> System.out.println("Running thread"));
+     *     future.get();
+     *     System.out.println("Task completed");
+     *     // ...
+     */
+    private static void createByExecutors(){
+        try(ExecutorService myExecutor = Executors.newVirtualThreadPerTaskExecutor()){
+            Future<?> future = myExecutor.submit(() -> System.out.println("Running thread"));
+            future.get();
+            System.out.println("task completed");
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
