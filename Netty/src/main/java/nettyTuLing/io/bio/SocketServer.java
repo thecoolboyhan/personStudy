@@ -14,13 +14,13 @@ public class SocketServer {
             Socket clientSocket = serverSocket.accept();
             System.out.println("有客户端连接了。。");
 //            在单线程上做优化，每接收的一个连接，就开启一个新的线程来处理
-            Thread.ofVirtual().start(()->{
-                try {
-                    handler(clientSocket);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+//            Thread.ofVirtual().start(()->{
+//                try {
+//                    handler(clientSocket);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }).start();
         }
     }
 
