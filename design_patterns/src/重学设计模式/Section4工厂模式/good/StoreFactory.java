@@ -15,8 +15,4 @@ public class StoreFactory {
         throw new RuntimeException("不存在的商品服务类型");
     }
 
-    public static void main(String[] args) {
-        List<Integer>[] ll=new List[2];
-        Arrays.setAll(ll,i->new ArrayList<Integer>());
-    }
 }
