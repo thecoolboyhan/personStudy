@@ -1,7 +1,5 @@
 package com.example;
 
-import ch.qos.logback.core.model.INamedModel;
-
 import java.util.*;
 
 public class Constants {
@@ -17,7 +15,6 @@ public class Constants {
 
     public static void main(String[] args) {
         Solution solution = new Solution();
-        solution.buildTree(new int[]{3,9,20,15,7},new int[]{9,3,15,20,7});
     }
 }
 
@@ -36,38 +33,42 @@ class TreeNode {
     }
 }
 
+
 class Solution {
-    public TreeNode buildTree(int[] preorder, int[] inorder) {
-        var stack=new LinkedList<TreeNode>();
-        TreeNode root=new TreeNode(preorder[0]);
-        stack.push(root);
-        var map=new HashMap<Integer,Integer>();
-        for(int i=0;i<inorder.length;i++){
-            map.put(inorder[i],i);
+
+    private Map<TreeNode,Map<Long,Integer>> map;
+    private int res=0;
+    private long target;
+    public int pathSum(TreeNode root, int targetSum) {
+        if(root==null) return 0;
+        this.map=new HashMap<>();
+        this.target=targetSum;
+        dd(root);
+        return res;
+    }
+
+    private void dd(TreeNode node){
+        Map<Long,Integer> map1=new HashMap<>();
+        map1.put((long) node.val,1);
+        if(node.left!=null){
+            dd(node.left);
+            var mapl=map.get(node.left);
+            change(node.val,map1,mapl);
         }
-        TreeNode pn=root;
-        A:
-        for(int i=1;i<preorder.length;i++){
-            int t=preorder[i];
-            int tl=map.get(preorder[i]);
-            while(!stack.isEmpty()){
-                int p=map.get(stack.peek().val);
-                if(p>tl){
-                    TreeNode node =new TreeNode(t);
-                    if(stack.peek().left!=null)stack.peek().left.right=node;
-                    else stack.peek().left=node;
-                    stack.push(node);
-                    pn=node;
-                    continue A;
-                }
-                pn=stack.pop();
-            }
-            TreeNode node =new TreeNode(t);
-            pn.right=node;
-            stack.push(node);
-            pn=node;
+
+        if(node.right!=null){
+            dd(node.right);
+            var mapr=map.get(node.right);
+            change(node.val,map1,mapr);
         }
-        System.out.println((root.left==null?"null":root.left.val)+","+(root.right==null?"null":root.right.val));
-        return root;
+        res+=map1.getOrDefault(target,0);
+        map.put(node,map1);
+    }
+
+    private void change(int val,Map<Long,Integer> map1,Map<Long,Integer> map2){
+        for (Map.Entry<Long, Integer> entry : map2.entrySet()) {
+            long t = entry.getKey() + val;
+            map1.put(t,map1.getOrDefault(t,0)+entry.getValue());
+        }
     }
 }
